@@ -7,7 +7,9 @@ terraform {
 }
 
 provider "kubiya" {
-  user_key = "f84a5e0afcf8ca1d39837a50b788cd5052b1b31b"
+  email        = ""
+  user_key     = ""
+  organization = ""
 }
 
 resource "kubiya_agent" "agent" {
