@@ -5,20 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 )
 
 func closeBody(b io.ReadCloser) {
 	_ = b.Close()
-}
-
-func toPathYaml(pre, suf string) string {
-	slash := "/"
-	layout := "%s/%s.yaml"
-	pre = strings.TrimSuffix(pre, slash)
-	suf = strings.TrimPrefix(suf, slash)
-
-	return fmt.Sprintf(layout, pre, suf)
 }
 
 func toJson(item interface{}) (io.Reader, error) {
