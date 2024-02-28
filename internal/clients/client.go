@@ -15,28 +15,40 @@ const (
 )
 
 type Client struct {
-	host    string
-	userKey string
-	client  *http.Client
+	host         string
+	email        string
+	userKey      string
+	organization string
+	client       *http.Client
 }
 
-func NewClient(key string) (*Client, error) {
+func NewClient(key, email, organization string) (*Client, error) {
 	if len(key) >= 1 {
 		host := defaultHost
 		timeout := defaultTimeout
 		client := &http.Client{Timeout: timeout}
-		return &Client{host: host, userKey: key, client: client}, nil
+		return &Client{host: host, email: email,
+			userKey: key, organization: organization, client: client}, nil
 	}
 
 	return nil, fmt.Errorf(userKeyError)
+}
+
+func (c *Client) queryParams(uri string) string {
+	if len(c.organization) >= 1 && len(c.email) >= 1 {
+		t := "%s?organization=%s&email=%s"
+		return fmt.Sprintf(t, uri, c.organization, c.email)
+	}
+
+	return uri
 }
 
 // DeleteAgent DELETE /api/v1/agents/{id}
 // https://api.kubiya.ai/api/v1/agents/01b81e08-17eb-4a3e-b0c6-6a48b0f2fad0
 func (c *Client) DeleteAgent(id string) error {
 	m := "DELETE"
-	t := "%s/api/v1/agents/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, id)
+	t := "%s/api/v1/agents/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -57,8 +69,8 @@ func (c *Client) DeleteAgent(id string) error {
 // GetAgents GET /api/v1/agents
 func (c *Client) GetAgents() ([]*Agent, error) {
 	m := "GET"
-	t := "%s/api/v1/agents?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host)
+	t := "%s/api/v1/agents"
+	uri := c.queryParams(fmt.Sprintf(t, c.host))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -84,8 +96,8 @@ func (c *Client) GetAgents() ([]*Agent, error) {
 // DeleteRunner DELETE /api/v1/runners/{name}
 func (c *Client) DeleteRunner(name string) error {
 	m := "DELETE"
-	t := "%s/api/v1/runners/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, name)
+	t := "%s/api/v1/runners/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -106,8 +118,8 @@ func (c *Client) DeleteRunner(name string) error {
 // GetAgentById GET /api/v1/agents/{id}
 func (c *Client) GetAgentById(id string) (*Agent, error) {
 	m := "GET"
-	t := "%s/api/v1/agents/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, id)
+	t := "%s/api/v1/agents/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -133,8 +145,8 @@ func (c *Client) GetAgentById(id string) (*Agent, error) {
 // CreateAgent POST /api/v1/agents
 func (c *Client) CreateAgent(agent *Agent) (*Agent, error) {
 	m := "POST"
-	t := "%s/api/v1/agents?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host)
+	t := "%s/api/v1/agents"
+	uri := c.queryParams(fmt.Sprintf(t, c.host))
 
 	payload, err := toJson(agent)
 	if err != nil {
@@ -171,8 +183,8 @@ func (c *Client) CreateAgent(agent *Agent) (*Agent, error) {
 // CreateRunner POST /api/v1/runners/{name}
 func (c *Client) CreateRunner(name string) (*Runner, error) {
 	m := "POST"
-	t := "%s/api/v1/runners/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, name)
+	t := "%s/api/v1/runners/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -201,8 +213,8 @@ func (c *Client) CreateRunner(name string) (*Runner, error) {
 // GetRunnerByName GET /api/v1/runners/{name}
 func (c *Client) GetRunnerByName(name string) (*Runner, error) {
 	m := "GET"
-	t := "%s/api/v1/runners/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, name)
+	t := "%s/api/v1/runners/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
 	req, err := http.NewRequest(m, uri, nil)
 	if err != nil || req == nil {
@@ -228,8 +240,8 @@ func (c *Client) GetRunnerByName(name string) (*Runner, error) {
 // UpdateAgent PUT /api/v1/agents/{id}
 func (c *Client) UpdateAgent(id string, agent *Agent) (*Agent, error) {
 	m := "PUT"
-	t := "%s/api/v1/agents/%s?organization=kubiya-ai&email=mevrat.avraham@kubiya.ai"
-	uri := fmt.Sprintf(t, c.host, id)
+	t := "%s/api/v1/agents/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
 
 	payload, err := toJson(agent)
 	if err != nil {
@@ -287,12 +299,17 @@ func (c *Client) doBytesHttpRequest(request *http.Request) ([]byte, error) {
 
 func (c *Client) doHttpRequest(request *http.Request) (*http.Response, error) {
 	const (
-		t          = "ApiKey %s"
-		authHeader = "Authorization"
+		t = "%s %s"
+		a = "ApiKey"
+		b = "Bearer"
 	)
 
-	header := fmt.Sprintf(t, c.userKey)
-	request.Header.Set(authHeader, header)
+	header := fmt.Sprintf(t, b, c.userKey)
+	if len(c.email) >= 1 && len(c.organization) >= 1 {
+		header = fmt.Sprintf(t, a, c.userKey)
+	}
+
+	request.Header.Set("Authorization", header)
 
 	return c.client.Do(request)
 }
