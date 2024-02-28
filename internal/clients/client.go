@@ -301,7 +301,7 @@ func (c *Client) doHttpRequest(request *http.Request) (*http.Response, error) {
 	const (
 		t = "%s %s"
 		a = "ApiKey"
-		b = "Bearer"
+		b = "UserKey"
 	)
 
 	header := fmt.Sprintf(t, b, c.userKey)
