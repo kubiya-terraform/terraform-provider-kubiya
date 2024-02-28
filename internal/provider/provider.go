@@ -20,9 +20,7 @@ type kubiyaProvider struct {
 }
 
 type KubiyaProviderModel struct {
-	Email        types.String `tfsdk:"email"`
-	UserKey      types.String `tfsdk:"user_key"`
-	Organization types.String `tfsdk:"organization"`
+	UserKey types.String `tfsdk:"user_key"`
 }
 
 var _ provider.Provider = (*kubiyaProvider)(nil)
@@ -49,15 +47,7 @@ func (p *kubiyaProvider) DataSources(_ context.Context) []func() datasource.Data
 func (p *kubiyaProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"email": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: false,
-			},
 			"user_key": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: false,
-			},
-			"organization": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: false,
 			},
@@ -83,7 +73,6 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 	var config KubiyaProviderModel
 	diags := req.Config.Get(ctx, &config)
-
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -120,10 +109,7 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	}
 
 	// Create a new Kubiya client using the configuration values
-	client, err := clients.
-		NewClient(userKey,
-			config.Email.ValueString(),
-			config.Organization.ValueString())
+	client, err := clients.NewClient(userKey)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			apiClientErrSummery,

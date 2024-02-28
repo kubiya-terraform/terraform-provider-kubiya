@@ -22,7 +22,6 @@ type Agent struct {
 }
 
 type Runner struct {
-	Path string `json:"-"`
 	Url  string `json:"url"`
 	Name string `json:"name"`
 }

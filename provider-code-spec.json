@@ -183,20 +183,6 @@
               "description": "url of runner spec file",
               "computed_optional_required": "computed_optional"
             }
-          },
-          {
-            "name": "runner_deployment_file",
-            "string": {
-              "description": "runner deployment file path",
-              "computed_optional_required": "computed_optional"
-            }
-          },
-          {
-            "name": "runner_deployment_folder",
-            "string": {
-              "description": "runner deployments folder path",
-              "computed_optional_required": "required"
-            }
           }
         ]
       }
