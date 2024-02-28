@@ -1,0 +1,24 @@
+provider:
+  name: kubiya
+resources:
+  agent:
+    read:
+      path: /agents/{id}
+      method: GET
+    create:
+      path: /agents
+      method: POST
+    delete:
+      path: /agents/{id}
+      method: DELETE
+    update:
+      path: /agents/{id}
+      method: PUT
+data_sources:
+  agent:
+    read:
+      path: /agents/{id}
+      method: GET
+    schema:
+      attributes:
+        id: uuid

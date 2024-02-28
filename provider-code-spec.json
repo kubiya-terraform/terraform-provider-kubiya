@@ -1,0 +1,192 @@
+{
+  "provider": {
+    "name": "kubiya"
+  },
+  "resources": [
+    {
+      "name": "agent",
+      "schema": {
+        "attributes": [
+          {
+            "name": "ai_instructions",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "allowed_groups",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "allowed_users",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "description",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "environment_variables",
+            "map": {
+              "element_type": {
+                "string": {}
+              },
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "id",
+            "string": {
+              "computed_optional_required": "computed_optional",
+              "description": "ID of agent"
+            }
+          },
+          {
+            "name": "image",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "integrations",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "links",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "llm_model",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "metadata",
+            "single_nested": {
+              "computed_optional_required": "computed_optional",
+              "attributes": [
+                {
+                  "name": "created_at",
+                  "string": {
+                    "computed_optional_required": "computed_optional"
+                  }
+                },
+                {
+                  "name": "last_updated",
+                  "string": {
+                    "computed_optional_required": "computed_optional"
+                  }
+                },
+                {
+                  "name": "user_created",
+                  "string": {
+                    "computed_optional_required": "computed_optional"
+                  }
+                },
+                {
+                  "name": "user_last_updated",
+                  "string": {
+                    "computed_optional_required": "computed_optional"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "name",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          },
+          {
+            "name": "owners",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "runners",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "secrets",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "starters",
+            "list": {
+              "computed_optional_required": "computed_optional",
+              "element_type": {
+                "string": {}
+              }
+            }
+          },
+          {
+            "name": "uuid",
+            "string": {
+              "computed_optional_required": "computed_optional"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "runner",
+      "schema": {
+        "attributes": [
+          {
+            "name": "name",
+            "string": {
+              "description": "name of runner",
+              "computed_optional_required": "required"
+            }
+          },
+          {
+            "name": "url",
+            "string": {
+              "description": "url of runner spec file",
+              "computed_optional_required": "computed_optional"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "version": "0.1"
+}

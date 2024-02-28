@@ -1,0 +1,584 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "description": "",
+    "version": "3.0.3",
+    "title": "Kubiya API",
+    "termsOfService": "https://kubiya.ai/terms/",
+    "contact": {
+      "email": "support@kubiya.ai"
+    }
+  },
+  "tags": [
+    {
+      "name": "Agents"
+    },
+    {
+      "name": "Runners"
+    }
+  ],
+  "paths": {
+    "/agents": {
+      "post": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Create new agent",
+        "description": "create new agent",
+        "operationId": "addAgent",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Agent"
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agents/{id}": {
+      "get": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Find agent by ID",
+        "description": "get agent by id",
+        "operationId": "getAgentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful get agent by id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Update agent by ID",
+        "description": "update agent by id",
+        "operationId": "updateAgentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/Agent"
+        },
+        "responses": {
+          "200": {
+            "description": "successful update agent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Agent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Agents"
+        ],
+        "summary": "Delete agent by ID",
+        "description": "delete agent by id",
+        "operationId": "deleteAgentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of agent",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful delete agent"
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runners/{id}": {
+      "post": {
+        "tags": [
+          "Runners"
+        ],
+        "summary": "Create new runner",
+        "description": "create new runner",
+        "operationId": "addRunner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Name of new runner",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful create runner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Runner"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Runners"
+        ],
+        "summary": "Delete runner",
+        "description": "delete runner",
+        "operationId": "deleteRunner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Name of new runner",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful delete runner",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/deployment/runners/{id}": {
+      "get": {
+        "tags": [
+          "Runners"
+        ],
+        "summary": "Get runner deployment file",
+        "description": "get deployment by id",
+        "operationId": "getRunnerDeploymentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of deployment",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful get runner deployment",
+            "content": {
+              "application/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.kubiya.ai/api/v1"
+    }
+  ],
+  "components": {
+    "requestBodies": {
+      "Agent": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Agent"
+            }
+          }
+        },
+        "description": "Agent object",
+        "required": true
+      }
+    },
+    "schemas": {
+      "Agent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "llm_model": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "ai_instructions": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "runners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secrets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "starters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "integrations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowed_users": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowed_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/Metadata"
+          },
+          "environment_variables": {
+            "type": "object"
+          }
+        }
+      },
+      "Runner": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "Metadata": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          },
+          "user_created": {
+            "type": "string"
+          },
+          "user_last_updated": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
