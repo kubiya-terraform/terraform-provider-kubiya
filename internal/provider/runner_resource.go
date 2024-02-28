@@ -2,11 +2,13 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
-	"terraform-provider-kubiya/internal/entities"
+	"terraform-provider-kubiya/internal/resource_agent"
+	"terraform-provider-kubiya/internal/resource_runner"
 )
 
 var (
@@ -15,7 +17,6 @@ var (
 )
 
 type runnerResource struct {
-	name   string
 	client *clients.Client
 }
 
@@ -23,67 +24,71 @@ func NewRunnerResource() resource.Resource {
 	return &runnerResource{}
 }
 
-func (r *runnerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state entities.RunnerModel
-
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if err := r.client.ReadRunner(ctx, &state); err != nil {
-		resp.Diagnostics.AddError(
-			resourceActionError(readAction, r.name, err.Error()),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+func (r *runnerResource) Read(_ context.Context, _ resource.ReadRequest, _ *resource.ReadResponse) {
+	//var data resource_runner.RunnerModel
+	//
+	//// Read Terraform prior state data into the model
+	//resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	//
+	//if resp.Diagnostics.HasError() {
+	//	return
+	//}
+	//
+	//// Read API call logic
+	//
+	//// Save updated data into Terraform state
+	//resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *runnerResource) Update(_ context.Context, _ resource.UpdateRequest, _ *resource.UpdateResponse) {
 }
 
-func (r *runnerResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = entities.RunnerSchema()
+func (r *runnerResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = resource_agent.AgentResourceSchema(ctx)
 }
 
 func (r *runnerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan entities.RunnerModel
+	var data resource_runner.RunnerModel
 
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	state, err := r.client.CreateRunner(ctx, &plan)
+	// Create API call logic
+	name := data.Name.ValueString()
+	runner, err := r.client.CreateRunner(name)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			resourceActionError(createAction, r.name, err.Error()),
+			"failed to create runner",
+			"failed to create runner"+err.Error(),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &runner)...)
 }
 
 func (r *runnerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var state entities.RunnerModel
+	var data resource_runner.RunnerModel
 
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	// Read Terraform prior state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if err := r.client.DeleteRunner(ctx, &state); err != nil {
+	// Delete API call logic
+	name := data.Name.ValueString()
+	err := r.client.DeleteRunner(name)
+	if err != nil {
 		resp.Diagnostics.AddError(
-			resourceActionError(deleteAction, r.name, err.Error()),
+			"failed to delete runner",
+			"failed to delete runner"+err.Error(),
 		)
 	}
 }
@@ -93,16 +98,18 @@ func (r *runnerResource) Metadata(_ context.Context, req resource.MetadataReques
 }
 
 func (r *runnerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData != nil {
-		var ok bool
-		var client *clients.Client
-
-		if client, ok = req.ProviderData.(*clients.Client); !ok {
-			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
-			return
-		}
-
-		r.name = "runner"
-		r.client = client
+	if req.ProviderData == nil {
+		return
 	}
+	client, ok := req.ProviderData.(*clients.Client)
+	if !ok {
+		resp.Diagnostics.AddError(
+			"Unexpected Data Source Configure Type",
+			fmt.Sprintf("Expected *clients.AgentsClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
+		)
+
+		return
+	}
+
+	r.client = client
 }

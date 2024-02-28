@@ -2,20 +2,25 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/clients"
-	"terraform-provider-kubiya/internal/entities"
 )
 
 type kubiyaProvider struct {
 	version string
+}
+
+type KubiyaProviderModel struct {
+	UserKey types.String `tfsdk:"user_key"`
 }
 
 var _ provider.Provider = (*kubiyaProvider)(nil)
@@ -32,7 +37,6 @@ func (p *kubiyaProvider) Resources(_ context.Context) []func() resource.Resource
 	return []func() resource.Resource{
 		NewAgentResource,
 		NewRunnerResource,
-		NewWebhookResource,
 	}
 }
 
@@ -41,7 +45,14 @@ func (p *kubiyaProvider) DataSources(_ context.Context) []func() datasource.Data
 }
 
 func (p *kubiyaProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = entities.ProviderConfigSchema()
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"user_key": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: false,
+			},
+		},
+	}
 }
 
 func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -49,36 +60,61 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 }
 
 func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var cfg entities.ProviderConfig
-	diags := req.Config.Get(ctx, &cfg)
+	const (
+		userKeyAttributeName   = "user_key"
+		userKeyEnvironmentName = "KUBIYA_USER_KEY"
 
+		apiClientErrSummery = "Unable to Create Kubiya API AgentsClient"
+		apiClientErrDetails = "An unexpected error occurred when creating the Kubiya API client. If the error is not clear, please contact the provider developers.\n\nKubiya AgentsClient Error: %s"
+
+		userKeySummery = "Unknown Kubiya UserKey"
+		userKeyDetails = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
+	)
+
+	var config KubiyaProviderModel
+	diags := req.Config.Get(ctx, &config)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if cfg.UserKey.IsNull() ||
-		cfg.UserKey.IsUnknown() {
-		const (
-			attr    = "user_key"
-			env     = "KUBIYA_USER_KEY"
-			summery = "Unknown Kubiya user_key"
-			details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
+	if config.UserKey.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root(userKeyAttributeName),
+			userKeySummery, userKeyDetails,
 		)
-		if v := os.Getenv(env); len(v) >= 1 {
-			cfg.UserKey = types.StringValue(v)
-		} else {
-			resp.Diagnostics.AddAttributeError(
-				path.Root(attr), summery, details)
+	}
 
-			return
-		}
+	// Default values to environment variables, but override
+	// with Terraform configuration value if set.
+
+	userKey := os.Getenv(userKeyEnvironmentName)
+
+	if !config.UserKey.IsNull() {
+		userKey = config.UserKey.ValueString()
+	}
+
+	// If any of the expected configurations are missing, return
+	// errors with provider-specific guidance.
+
+	if userKey == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root(userKeyAttributeName),
+			userKeySummery, userKeyDetails,
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Create a new Kubiya client using the configuration values
-	client, err := clients.New(cfg.UserKey.ValueString())
+	client, err := clients.NewClient(userKey)
 	if err != nil {
-		resp.Diagnostics.AddError(configureProviderError(err))
+		resp.Diagnostics.AddError(
+			apiClientErrSummery,
+			fmt.Sprintf(apiClientErrDetails, err.Error()),
+		)
 		return
 	}
 

@@ -11,7 +11,7 @@ import (
 
 const (
 	version = "dev"
-	address = "hashicorp.com/edu/Kubiya"
+	address = "hashicorp.com/edu/kubiya"
 )
 
 func main() {
