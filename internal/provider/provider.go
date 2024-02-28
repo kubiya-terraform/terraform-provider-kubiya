@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -11,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	"terraform-provider-kubiya/internal/clients"
 )
@@ -49,7 +51,15 @@ func (p *kubiyaProvider) DataSources(_ context.Context) []func() datasource.Data
 func (p *kubiyaProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"email": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: false,
+			},
 			"user_key": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: false,
+			},
+			"organization": schema.StringAttribute{
 				Optional:  true,
 				Sensitive: false,
 			},
@@ -75,6 +85,9 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 
 	var config KubiyaProviderModel
 	diags := req.Config.Get(ctx, &config)
+	log.Printf("80: config: %v\n", config)
+	tflog.Debug(ctx, fmt.Sprintf("80: config: %v", config))
+
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
