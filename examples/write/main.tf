@@ -1,19 +1,30 @@
 terraform {
   required_providers {
     kubiya = {
-      source = "hashicorp.com/edu/Kubiya"
+      source = "hashicorp.com/edu/kubiya"
     }
   }
 }
 
 provider "kubiya" {
-  user_key = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InNqRUZmVVVPeTJEdHJGY0lJSmhsSSJ9.eyJuaWNrbmFtZSI6Im1ldnJhdCIsIm5hbWUiOiJtZXZyYXQiLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvZWRjMTFhOTIxZTljMmY4YWUyZmFhNzVjMTU1OGE1NTU_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZtZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyNC0wNS0wNVQwOTowNDozMi4zODRaIiwiZW1haWwiOiJtZXZyYXRAZmluZWJlZS5pbyIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL2t1Yml5YS51cy5hdXRoMC5jb20vIiwiYXVkIjoiU3hwUDlPVTdWU3Z2UGl2SEZRWTVHZXQzdUMxQng0SmYiLCJpYXQiOjE3MTQ4OTk4NzgsImV4cCI6MTcxNDkzNTg3OCwic3ViIjoib2F1dGgyfHNsYWNrfFQwNlQ5OUs2N0JNLVUwNlQ5RDBSVkdBIiwic2lkIjoiX1p4c0MwY3dBMzZTZUhoQVhHdjJiZE15bFJyR0xyeVEiLCJub25jZSI6ImNXRXVjMEZHUzNSM01DMHpSV1YwVFUxblJHZCtMbmhaYmsxUGNHMHhUM05sV1dSdVkxcEhkWEZrTUE9PSIsIm9yZ19pZCI6Im9yZ19pd0tFWXpoTWxUU3prcnd0In0.orDZlaLz4uYgEOw7nsVXsT3370AWjp74b6hIgYiSr4FTAzyrrFkefNyyeSFpDL0e21aKWwLzn9tP-h98FsCgFDwb8hJCXXym7m0yh1hVXOuiHpKdA4gX7-md_KaLQSGnlM6AIkFyi6n7YSeunYzSaFNLqHTpw6E_eHadIJ4PjOm-mgLWC2v61OBPSy9l8iKMKv8Ea_NyS8Xx7fvo-pAeNz7Ij3Z-MKSXW5YKovZJQoNBZ-keEDK6-JWQIgy4amqtCLcGxplysKX6zOMXLjhIKHUiWL2wicHjc-yIp3sdoxj7ee11JWWgJ0i_SMMsRJoMUoRxmhykYXniOVaKfyxoGw"
+  user_key = "4534tgq3gq354gq5"
 }
 
-resource "kubiya_agent" "bla_agent" {
-  name = "bla"
+resource "kubiya_agent" "my_agent" {
+  name            = "my_agent-name"
+  image           = "my_agent-image"
+  llm_model       = "my_agent-llm-model"
+  description     = "my_agent-description"
+  ai_instructions = "my_agent-ai-instructions"
+
+  links                 = ["my_agent-link-1", "my_agent-link-2"]
+  runners               = ["my_agent-runner-1", "my_agent-runner-2"]
+  secrets               = ["my_agent-secret-1", "my_agent-secret-2"]
+  starters              = ["my_agent-starter-1", "my_agent-starter-2"]
+  integrations          = ["my_agent-integration-1", "my_agent-integration-2"]
+  environment_variables = { "agent-2-env-1" = "my_agent-env-value-1", "my_agent-env-2" = "my_agent-env-value-2" }
 }
 
 output "resource_id" {
-  value = kubiya_agent.bla_agent
+  value = kubiya_agent.my_agent
 }
