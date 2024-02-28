@@ -20,7 +20,9 @@ type kubiyaProvider struct {
 }
 
 type KubiyaProviderModel struct {
-	UserKey types.String `tfsdk:"user_key"`
+	Email        types.String `tfsdk:"email"`
+	UserKey      types.String `tfsdk:"user_key"`
+	Organization types.String `tfsdk:"organization"`
 }
 
 var _ provider.Provider = (*kubiyaProvider)(nil)
@@ -109,7 +111,10 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	}
 
 	// Create a new Kubiya client using the configuration values
-	client, err := clients.NewClient(userKey)
+	client, err := clients.
+		NewClient(userKey,
+			config.Email.ValueString(),
+			config.Organization.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
 			apiClientErrSummery,
