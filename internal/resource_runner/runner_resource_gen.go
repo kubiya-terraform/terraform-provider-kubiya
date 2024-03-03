@@ -17,6 +17,17 @@ func RunnerResourceSchema(ctx context.Context) schema.Schema {
 				Description:         "name of runner",
 				MarkdownDescription: "name of runner",
 			},
+			"runner_deployment_file": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "runner deployment file path",
+				MarkdownDescription: "runner deployment file path",
+			},
+			"runner_deployment_folder": schema.StringAttribute{
+				Required:            true,
+				Description:         "runner deployments folder path",
+				MarkdownDescription: "runner deployments folder path",
+			},
 			"url": schema.StringAttribute{
 				Optional:            true,
 				Computed:            true,
@@ -28,6 +39,8 @@ func RunnerResourceSchema(ctx context.Context) schema.Schema {
 }
 
 type RunnerModel struct {
-	Name types.String `tfsdk:"name"`
-	Url  types.String `tfsdk:"url"`
+	Name                   types.String `tfsdk:"name"`
+	RunnerDeploymentFile   types.String `tfsdk:"runner_deployment_file"`
+	RunnerDeploymentFolder types.String `tfsdk:"runner_deployment_folder"`
+	Url                    types.String `tfsdk:"url"`
 }

@@ -40,7 +40,7 @@ func (a *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"failed to get agent by id",
-			"failed to get agent by id"+err.Error())
+			"failed to get agent by id. Error: "+err.Error())
 	}
 
 	result := resource_agent.AgentModel{
@@ -87,7 +87,7 @@ func (a *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"failed to delete agent by id",
-			"failed to delete agent by id"+err.Error())
+			"failed to delete agent by id. Error: "+err.Error())
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
