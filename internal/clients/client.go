@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -96,7 +97,7 @@ func (c *Client) GetAgents() ([]*Agent, error) {
 // DeleteRunner DELETE /api/v1/runners/{name}
 func (c *Client) DeleteRunner(name string) error {
 	m := "DELETE"
-	t := "%s/api/v1/runners/%s"
+	t := "%s/api/v1/runners/%s-tunnel"
 	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
 	req, err := http.NewRequest(m, uri, nil)
@@ -181,7 +182,7 @@ func (c *Client) CreateAgent(agent *Agent) (*Agent, error) {
 }
 
 // CreateRunner POST /api/v1/runners/{name}
-func (c *Client) CreateRunner(name string) (*Runner, error) {
+func (c *Client) CreateRunner(name, path string) (*Runner, error) {
 	m := "POST"
 	t := "%s/api/v1/runners/%s"
 	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
@@ -206,6 +207,10 @@ func (c *Client) CreateRunner(name string) (*Runner, error) {
 	if err = json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
+
+	result.Name = name
+	result.Path = toPathYaml(path, name)
+	err = c.downloadFile(result.Url, toPathYaml(path, name))
 
 	return &result, err
 }
@@ -273,6 +278,38 @@ func (c *Client) UpdateAgent(id string, agent *Agent) (*Agent, error) {
 	}
 
 	return &result, nil
+}
+
+func (c *Client) downloadFile(uri, path string) error {
+	m := "GET"
+	req, err := http.NewRequest(m, uri, nil)
+	if err != nil || req == nil {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("failed to create *http.Request")
+	}
+
+	resp, err := c.doHttpRequest(req)
+	if err != nil {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("create runner response is empty")
+	}
+	defer closeBody(resp.Body)
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *Client) doBytesHttpRequest(request *http.Request) ([]byte, error) {

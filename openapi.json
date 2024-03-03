@@ -254,7 +254,7 @@
         }
       }
     },
-    "/runners/{id}": {
+    "/runners/{name}": {
       "post": {
         "tags": [
           "Runners"
@@ -264,7 +264,7 @@
         "operationId": "addRunner",
         "parameters": [
           {
-            "name": "id",
+            "name": "name",
             "in": "path",
             "description": "Name of new runner",
             "required": true,
