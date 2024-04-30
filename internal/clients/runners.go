@@ -1,114 +1,87 @@
 package clients
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-
-	"github.com/hashicorp/terraform-plugin-framework/types"
-
-	"terraform-provider-kubiya/internal/entities"
+	"net/http"
 )
 
-type runner struct {
-	Key     string `json:"key"`
-	Url     string `json:"url"`
-	Name    string `json:"name"`
-	Subject string `json:"subject"`
-}
+func (c *Client) DeleteRunner(name string) error {
+	m := "DELETE"
+	t := "%s/api/v1/runners/%s-tunnel"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
-func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) error {
-	if entity != nil {
-		const (
-			uri = "/api/v3/runners/%s/describe"
-		)
-
-		name := entity.Name.ValueString()
-
-		resp, err := c.read(ctx, c.uri(format(uri, name)))
+	req, err := http.NewRequest(m, uri, nil)
+	if err != nil || req == nil {
 		if err != nil {
 			return err
 		}
 
-		var r *runner
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to create *http.Request")
+	}
 
-		entity = &entities.RunnerModel{
-			Key:     types.StringValue(r.Key),
-			Url:     types.StringValue(r.Url),
-			Name:    types.StringValue(r.Name),
-			Subject: types.StringValue(r.Subject),
-		}
-
+	if _, err = c.doBytesHttpRequest(req); err != nil {
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.RunnerModel) is nil")
+	return nil
 }
 
-func (c *Client) DeleteRunner(ctx context.Context, entity *entities.RunnerModel) error {
-	if entity != nil {
-		const (
-			uri = "/api/v3/runners/%s"
-		)
-		name := entity.Name.ValueString()
+func (c *Client) GetRunnerByName(name string) (*Runner, error) {
+	m := "GET"
+	t := "%s/api/v1/runners/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
-		_, err := c.delete(ctx, c.uri(format(uri, name)))
-		return err
+	req, err := http.NewRequest(m, uri, nil)
+	if err != nil || req == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to create *http.Request")
 	}
 
-	return fmt.Errorf("param entity (*entities.RunnerModel) is nil")
+	body, err := c.doBytesHttpRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var result Runner
+	if err = json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, err
 }
 
-func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel) (*entities.RunnerModel, error) {
-	if entity != nil {
-		const (
-			uri = "/api/v3/runners/%s"
-		)
+func (c *Client) CreateRunner(name, path string) (*Runner, error) {
+	m := "POST"
+	t := "%s/api/v1/runners/%s"
+	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
 
-		path := entity.Path.ValueString()
-		name := entity.Name.ValueString()
-
-		resp, err := c.create(ctx, c.uri(format(uri, name)), nil)
+	req, err := http.NewRequest(m, uri, nil)
+	if err != nil || req == nil {
 		if err != nil {
 			return nil, err
 		}
-
-		var r *runner
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(path) >= 1 {
-			path = toPathYaml(path, name)
-			if err = c.downloadFile(r.Url, path); err != nil {
-				return nil, err
-			}
-
-			entity.Path = types.StringValue(path)
-		}
-
-		runners, err := c.runners()
-		if err != nil {
-			return nil, err
-		}
-
-		for _, item := range runners {
-			if equal(item.Name, name) {
-				entity.Url = types.StringValue(r.Url)
-				entity.Key = types.StringValue(item.Key)
-				entity.Name = types.StringValue(item.Name)
-				entity.Subject = types.StringValue(item.Subject)
-				break
-			}
-		}
-
-		return entity, err
+		return nil, fmt.Errorf("failed to create *http.Request")
 	}
 
-	return nil, fmt.Errorf("param entity (*entities.RunnerModel) is nil")
+	body, err := c.doBytesHttpRequest(req)
+	if err != nil || len(body) <= 0 {
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("create runner response is empty")
+	}
+
+	var result Runner
+	if err = json.Unmarshal(body, &result); err != nil {
+		return nil, err
+	}
+
+	result.Name = name
+	result.Path = toPathYaml(path, name)
+	err = c.downloadFile(result.Url, toPathYaml(path, name))
+
+	return &result, err
 }
