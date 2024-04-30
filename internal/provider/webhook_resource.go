@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
@@ -15,24 +14,6 @@ var (
 	_ resource.Resource              = (*webhookResource)(nil)
 	_ resource.ResourceWithConfigure = (*webhookResource)(nil)
 )
-
-type webhookModel struct {
-	Id            types.String        `tfsdk:"id"`
-	Org           types.String        `tfsdk:"org"`
-	Name          types.String        `tfsdk:"name"`
-	Source        types.String        `tfsdk:"source"`
-	Prompt        types.String        `tfsdk:"prompt"`
-	Filter        types.String        `tfsdk:"filter"`
-	AgentId       types.String        `tfsdk:"agent_id"`
-	CreatedBy     types.String        `tfsdk:"created_by"`
-	Webhook       types.String        `tfsdk:"webhook_url"`
-	Communication *communicationModel `tfsdk:"communication"`
-}
-
-type communicationModel struct {
-	Method      string `tfsdk:"method"`
-	Destination string `tfsdk:"destination"`
-}
 
 type webhookResource struct {
 	client *clients.Client
