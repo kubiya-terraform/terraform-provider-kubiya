@@ -1,7 +1,7 @@
 package clients
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,13 +23,13 @@ type Client struct {
 	client       *http.Client
 }
 
-func NewClient(key, email, organization string) (*Client, error) {
-	if len(key) >= 1 {
+func NewClient(k, e, o string) (*Client, error) {
+	if len(k) >= 1 {
 		host := defaultHost
 		timeout := defaultTimeout
 		client := &http.Client{Timeout: timeout}
-		return &Client{host: host, email: email,
-			userKey: key, organization: organization, client: client}, nil
+		return &Client{host: host, email: e,
+			userKey: k, organization: o, client: client}, nil
 	}
 
 	return nil, fmt.Errorf(userKeyError)
@@ -44,242 +44,6 @@ func (c *Client) queryParams(uri string) string {
 	return uri
 }
 
-// DeleteAgent DELETE /api/v1/agents/{id}
-// https://api.kubiya.ai/api/v1/agents/01b81e08-17eb-4a3e-b0c6-6a48b0f2fad0
-func (c *Client) DeleteAgent(id string) error {
-	m := "DELETE"
-	t := "%s/api/v1/agents/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return err
-		}
-
-		return fmt.Errorf("failed to create *http.Request")
-	}
-
-	if _, err = c.doBytesHttpRequest(req); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetAgents GET /api/v1/agents
-func (c *Client) GetAgents() ([]*Agent, error) {
-	m := "GET"
-	t := "%s/api/v1/agents"
-	uri := c.queryParams(fmt.Sprintf(t, c.host))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []*Agent
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// DeleteRunner DELETE /api/v1/runners/{name}
-func (c *Client) DeleteRunner(name string) error {
-	m := "DELETE"
-	t := "%s/api/v1/runners/%s-tunnel"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return err
-		}
-
-		return fmt.Errorf("failed to create *http.Request")
-	}
-
-	if _, err = c.doBytesHttpRequest(req); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetAgentById GET /api/v1/agents/{id}
-func (c *Client) GetAgentById(id string) (*Agent, error) {
-	m := "GET"
-	t := "%s/api/v1/agents/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var result *Agent
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-// CreateAgent POST /api/v1/agents
-func (c *Client) CreateAgent(agent *Agent) (*Agent, error) {
-	m := "POST"
-	t := "%s/api/v1/agents"
-	uri := c.queryParams(fmt.Sprintf(t, c.host))
-
-	payload, err := toJson(agent)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("agent is nil")
-	}
-
-	req, err := http.NewRequest(m, uri, payload)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("create agent response is empty")
-	}
-
-	var result Agent
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
-// CreateRunner POST /api/v1/runners/{name}
-func (c *Client) CreateRunner(name, path string) (*Runner, error) {
-	m := "POST"
-	t := "%s/api/v1/runners/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("create runner response is empty")
-	}
-
-	var result Runner
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	result.Name = name
-	result.Path = toPathYaml(path, name)
-	err = c.downloadFile(result.Url, toPathYaml(path, name))
-
-	return &result, err
-}
-
-// GetRunnerByName GET /api/v1/runners/{name}
-func (c *Client) GetRunnerByName(name string) (*Runner, error) {
-	m := "GET"
-	t := "%s/api/v1/runners/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
-
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var result Runner
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, err
-}
-
-// UpdateAgent PUT /api/v1/agents/{id}
-func (c *Client) UpdateAgent(id string, agent *Agent) (*Agent, error) {
-	m := "PUT"
-	t := "%s/api/v1/agents/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, id))
-
-	payload, err := toJson(agent)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("agent is nil")
-	}
-
-	req, err := http.NewRequest(m, uri, payload)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
-
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("update agent response is empty")
-	}
-
-	var result Agent
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
-}
-
 func (c *Client) downloadFile(uri, path string) error {
 	m := "GET"
 	req, err := http.NewRequest(m, uri, nil)
@@ -291,7 +55,7 @@ func (c *Client) downloadFile(uri, path string) error {
 	}
 
 	resp, err := c.doHttpRequest(req)
-	if err != nil {
+	if err != nil || resp == nil {
 		if err != nil {
 			return err
 		}
@@ -312,8 +76,8 @@ func (c *Client) downloadFile(uri, path string) error {
 	return nil
 }
 
-func (c *Client) doBytesHttpRequest(request *http.Request) ([]byte, error) {
-	res, err := c.doHttpRequest(request)
+func (c *Client) doBytesHttpRequest(r *http.Request) ([]byte, error) {
+	res, err := c.doHttpRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +98,7 @@ func (c *Client) doBytesHttpRequest(request *http.Request) ([]byte, error) {
 	return body, err
 }
 
-func (c *Client) doHttpRequest(request *http.Request) (*http.Response, error) {
+func (c *Client) doHttpRequest(r *http.Request) (*http.Response, error) {
 	const (
 		t = "%s %s"
 		a = "ApiKey"
@@ -346,7 +110,13 @@ func (c *Client) doHttpRequest(request *http.Request) (*http.Response, error) {
 		header = fmt.Sprintf(t, a, c.userKey)
 	}
 
-	request.Header.Set("Authorization", header)
+	r.Header.Set("Authorization", header)
 
-	return c.client.Do(request)
+	return c.client.Do(r)
+}
+
+func (c *Client) doReaderHttpRequest(r *http.Request) (io.Reader, error) {
+	body, err := c.doBytesHttpRequest(r)
+
+	return bytes.NewReader(body), err
 }
