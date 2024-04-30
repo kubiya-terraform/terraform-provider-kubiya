@@ -34,14 +34,11 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	// Read API call logic
 	result, err := r.client.GetWebhook(&d)
-	if err != nil || result == nil {
-		if err != nil {
-			diags.AddError("webhook not found", err.Error())
-		} else {
-			diags.AddError("webhook not found",
-				fmt.Sprintf("webhook by name: %s not found", d.Name),
-			)
-		}
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"webhook not found",
+			fmt.Sprintf("webhook by name: %s not found. Error: ", d.Name)+err.Error(),
+		)
 	}
 
 	if resp.Diagnostics.HasError() {
@@ -92,7 +89,10 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	result, err := r.client.UpdateWebhook(&updatedState)
 	if err != nil {
-		resp.Diagnostics.AddError("failed to update webhook", err.Error())
+		resp.Diagnostics.AddError(
+			"failed to update webhook",
+			"failed to update webhook. Error: "+err.Error(),
+		)
 	}
 
 	if resp.Diagnostics.HasError() {
@@ -118,7 +118,10 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 
 	result, err := r.client.CreateWebhook(&plan)
 	if err != nil {
-		resp.Diagnostics.AddError("failed to update webhook", err.Error())
+		resp.Diagnostics.AddError(
+			"failed to create webhook",
+			"failed to create webhook. Error: "+err.Error(),
+		)
 	}
 
 	if resp.Diagnostics.HasError() {
