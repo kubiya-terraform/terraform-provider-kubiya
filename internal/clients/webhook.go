@@ -109,13 +109,14 @@ func (c *Client) GetWebhook(req *entities.WebhookModel) (*entities.WebhookModel,
 	)
 
 	id := req.Id.ValueString()
+	name := req.Name.ValueString()
 
 	respBody, err := c.webhook(method, uri, nil)
 	if err != nil || respBody == nil {
 		if err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf(errMsg, id)
+		return nil, fmt.Errorf(errMsg, name)
 	}
 
 	var result []*webhook
@@ -125,7 +126,7 @@ func (c *Client) GetWebhook(req *entities.WebhookModel) (*entities.WebhookModel,
 	}
 
 	if len(result) <= 0 {
-		return nil, fmt.Errorf(errMsg, id)
+		return nil, fmt.Errorf(errMsg, name)
 	}
 
 	users, err := c.users()
@@ -141,21 +142,22 @@ func (c *Client) GetWebhook(req *entities.WebhookModel) (*entities.WebhookModel,
 	var wbResp *entities.WebhookModel
 
 	for _, i := range result {
-		if strings.EqualFold(i.Id, id) {
-			destination := ""
-			createdBy := ""
+		if strings.EqualFold(i.Id, id) ||
+			strings.EqualFold(i.Name, name) {
+			by := ""
 			agentName := ""
-			createdAt := i.CreatedAt.String()
+			destination := ""
+			at := i.CreatedAt.String()
 
 			for _, u := range users {
-				if strings.EqualFold(u.UUID, i.CreatedBy) {
-					createdBy = u.Email
+				if strings.EqualFold(i.CreatedBy, u.UUID) {
+					by = u.Email
 					break
 				}
 			}
 
 			for _, a := range agents {
-				if strings.EqualFold(id, a.Uuid) {
+				if strings.EqualFold(i.AgentId, a.Uuid) {
 					agentName = a.Name
 					break
 				}
@@ -166,14 +168,14 @@ func (c *Client) GetWebhook(req *entities.WebhookModel) (*entities.WebhookModel,
 			}
 
 			wbResp = &entities.WebhookModel{
+				CreatedAt:   types.StringValue(at),
+				CreatedBy:   types.StringValue(by),
 				Id:          types.StringValue(i.Id),
 				Name:        types.StringValue(i.Name),
 				Filter:      types.StringValue(i.Filter),
 				Source:      types.StringValue(i.Source),
 				Prompt:      types.StringValue(i.Prompt),
 				Agent:       types.StringValue(agentName),
-				CreatedAt:   types.StringValue(createdAt),
-				CreatedBy:   types.StringValue(createdBy),
 				Destination: types.StringValue(destination),
 			}
 
