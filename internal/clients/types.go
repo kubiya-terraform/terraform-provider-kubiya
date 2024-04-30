@@ -33,3 +33,25 @@ type Metadata struct {
 	UserCreated     string `json:"user_created"`
 	UserLastUpdated string `json:"user_last_updated"`
 }
+
+type User struct {
+	Roles      []any    `json:"roles"`
+	UUID       string   `json:"uuid"`
+	Name       string   `json:"name"`
+	Email      string   `json:"email"`
+	Image      string   `json:"image"`
+	Groups     []string `json:"groups"`
+	Status     bool     `json:"status"`
+	CreateAt   string   `json:"create_at"`
+	UserStatus string   `json:"user_status"`
+	InviteLink string   `json:"invite_link"`
+}
+
+type Group struct {
+	UUID        string   `json:"uuid"`
+	Name        string   `json:"name"`
+	Roles       []string `json:"roles"`
+	System      bool     `json:"system"`
+	CreateAt    string   `json:"create_at"`
+	Description string   `json:"description"`
+}
