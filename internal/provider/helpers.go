@@ -1,12 +1,21 @@
 package provider
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+func eformat(l string, i ...any) error {
+	return fmt.Errorf(l, i...)
+}
+
+func format(l string, i ...any) string {
+	return fmt.Sprintf(l, i...)
+}
 
 func cleanString(str string) string {
 	remove := "\""
