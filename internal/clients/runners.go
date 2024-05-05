@@ -1,87 +1,114 @@
 package clients
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
+
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"terraform-provider-kubiya/internal/entities"
 )
 
-func (c *Client) DeleteRunner(name string) error {
-	m := "DELETE"
-	t := "%s/api/v1/runners/%s-tunnel"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
+type runner struct {
+	Key     string `json:"key"`
+	Url     string `json:"url"`
+	Name    string `json:"name"`
+	Subject string `json:"subject"`
+}
 
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
+func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) error {
+	if entity != nil {
+		const (
+			uri = "/api/v3/runners/%s/describe"
+		)
+
+		name := entity.Name.ValueString()
+
+		resp, err := c.read(ctx, c.uri(format(uri, name)))
 		if err != nil {
 			return err
 		}
 
-		return fmt.Errorf("failed to create *http.Request")
-	}
+		var r *runner
+		err = json.NewDecoder(resp).Decode(&r)
+		if err != nil {
+			return err
+		}
 
-	if _, err = c.doBytesHttpRequest(req); err != nil {
+		entity = &entities.RunnerModel{
+			Key:     types.StringValue(r.Key),
+			Url:     types.StringValue(r.Url),
+			Name:    types.StringValue(r.Name),
+			Subject: types.StringValue(r.Subject),
+		}
+
 		return err
 	}
 
-	return nil
+	return fmt.Errorf("param entity (*entities.RunnerModel) is nil")
 }
 
-func (c *Client) GetRunnerByName(name string) (*Runner, error) {
-	m := "GET"
-	t := "%s/api/v1/runners/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
+func (c *Client) DeleteRunner(ctx context.Context, entity *entities.RunnerModel) error {
+	if entity != nil {
+		const (
+			uri = "/api/v3/runners/%s"
+		)
+		name := entity.Name.ValueString()
 
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("failed to create *http.Request")
+		_, err := c.delete(ctx, c.uri(format(uri, name)))
+		return err
 	}
 
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	var result Runner
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	return &result, err
+	return fmt.Errorf("param entity (*entities.RunnerModel) is nil")
 }
 
-func (c *Client) CreateRunner(name, path string) (*Runner, error) {
-	m := "POST"
-	t := "%s/api/v1/runners/%s"
-	uri := c.queryParams(fmt.Sprintf(t, c.host, name))
+func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel) (*entities.RunnerModel, error) {
+	if entity != nil {
+		const (
+			uri = "/api/v3/runners/%s"
+		)
 
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
+		path := entity.Path.ValueString()
+		name := entity.Name.ValueString()
+
+		resp, err := c.create(ctx, c.uri(format(uri, name)), nil)
 		if err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("failed to create *http.Request")
-	}
 
-	body, err := c.doBytesHttpRequest(req)
-	if err != nil || len(body) <= 0 {
+		var r *runner
+		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
 			return nil, err
 		}
-		return nil, fmt.Errorf("create runner response is empty")
+
+		if len(path) >= 1 {
+			path = toPathYaml(path, name)
+			if err = c.downloadFile(r.Url, path); err != nil {
+				return nil, err
+			}
+
+			entity.Path = types.StringValue(path)
+		}
+
+		runners, err := c.runners()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range runners {
+			if equal(item.Name, name) {
+				entity.Url = types.StringValue(r.Url)
+				entity.Key = types.StringValue(item.Key)
+				entity.Name = types.StringValue(item.Name)
+				entity.Subject = types.StringValue(item.Subject)
+				break
+			}
+		}
+
+		return entity, err
 	}
 
-	var result Runner
-	if err = json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	result.Name = name
-	result.Path = toPathYaml(path, name)
-	err = c.downloadFile(result.Url, toPathYaml(path, name))
-
-	return &result, err
+	return nil, fmt.Errorf("param entity (*entities.RunnerModel) is nil")
 }

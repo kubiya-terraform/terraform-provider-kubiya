@@ -2,121 +2,242 @@ package clients
 
 import (
 	"bytes"
-	"fmt"
-	"io"
+	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
-	"os"
-	"time"
-)
-
-const (
-	defaultHost    = "https://api.kubiya.ai"
-	userKeyError   = "UserKey is empty or nil"
-	defaultTimeout = 10 * time.Second
 )
 
 type Client struct {
-	host         string
-	email        string
-	userKey      string
-	organization string
-	client       *http.Client
+	host    string
+	userKey string
+	client  *http.Client
 }
 
-func NewClient(k, e, o string) (*Client, error) {
-	if len(k) >= 1 {
-		host := defaultHost
-		timeout := defaultTimeout
-		client := &http.Client{Timeout: timeout}
-		return &Client{host: host, email: e,
-			userKey: k, organization: o, client: client}, nil
+func New(uk string) (*Client, error) {
+	if len(uk) >= 1 {
+		client := &http.Client{}
+		host := "https://api.kubiya.ai"
+		return &Client{userKey: uk, client: client, host: host}, nil
 	}
 
-	return nil, fmt.Errorf(userKeyError)
+	return nil, eformat("UserKey is missing or empty")
 }
 
-func (c *Client) queryParams(uri string) string {
-	if len(c.organization) >= 1 && len(c.email) >= 1 {
-		t := "%s?organization=%s&email=%s"
-		return fmt.Sprintf(t, uri, c.organization, c.email)
-	}
+func (c *Client) self() (*user, error) {
+	const (
+		path = "/api/v1/users/self"
+	)
 
-	return uri
-}
+	uri := c.uri(path)
+	ctx := context.Background()
 
-func (c *Client) downloadFile(uri, path string) error {
-	m := "GET"
-	req, err := http.NewRequest(m, uri, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("failed to create *http.Request")
-	}
-
-	resp, err := c.doHttpRequest(req)
-	if err != nil || resp == nil {
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("create runner response is empty")
-	}
-	defer closeBody(resp.Body)
-
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (c *Client) doBytesHttpRequest(r *http.Request) ([]byte, error) {
-	res, err := c.doHttpRequest(r)
+	resp, err := c.read(ctx, uri)
 	if err != nil {
 		return nil, err
 	}
-	defer closeBody(res.Body)
 
-	body, err := io.ReadAll(res.Body)
-	if err != nil || len(body) <= 0 {
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("response body is empty")
-	}
+	var result *user
+	err = json.NewDecoder(resp).Decode(&result)
 
-	if res.StatusCode >= http.StatusBadRequest {
-		return nil, fmt.Errorf("status: %d, body: %s", res.StatusCode, body)
-	}
-
-	return body, err
+	return result, err
 }
 
-func (c *Client) doHttpRequest(r *http.Request) (*http.Response, error) {
+func (c *Client) state() (*state, error) {
+	var err error
+	var currentState state
+
+	if users, e := c.users(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.users = append(make([]*user, 0), users...)
+	}
+
+	if agents, e := c.agents(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.agents = append(make([]*agent, 0), agents...)
+	}
+
+	if groups, e := c.groups(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.groups = append(make([]*group, 0), groups...)
+	}
+
+	if runners, e := c.runners(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.runners = append(make([]*runner, 0), runners...)
+	}
+
+	if secrets, e := c.secrets(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.secrets = append(make([]*secret, 0), secrets...)
+	}
+
+	if webhooks, e := c.webhooks(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.webhooks = append(make([]*webhook, 0), webhooks...)
+	}
+
+	if integrations, e := c.integrations(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.integrations = append(make([]*integration, 0), integrations...)
+	}
+
+	return &currentState, err
+}
+
+func (c *Client) users() ([]*user, error) {
 	const (
-		t = "%s %s"
-		a = "ApiKey"
-		b = "UserKey"
+		path = "/api/v1/users"
 	)
 
-	header := fmt.Sprintf(t, b, c.userKey)
-	if len(c.email) >= 1 && len(c.organization) >= 1 {
-		header = fmt.Sprintf(t, a, c.userKey)
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
 	}
 
-	r.Header.Set("Authorization", header)
+	var result []*user
+	err = json.NewDecoder(resp).Decode(&result)
 
-	return c.client.Do(r)
+	return result, err
 }
 
-func (c *Client) doReaderHttpRequest(r *http.Request) (io.Reader, error) {
-	body, err := c.doBytesHttpRequest(r)
+func (c *Client) groups() ([]*group, error) {
+	const (
+		path = "/api/v1/manage/groups"
+	)
 
-	return bytes.NewReader(body), err
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.readBytes(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*group
+	err = json.NewDecoder(bytes.NewReader(resp)).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) agents() ([]*agent, error) {
+	const (
+		path = "/api/v1/agents"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*agent
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) runners() ([]*runner, error) {
+	const (
+		path = "/api/v3/runners"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*runner
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) secrets() ([]*secret, error) {
+	const (
+		path = "/api/v1/secrets"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*secret
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) webhooks() ([]*webhook, error) {
+	const (
+		path = "/api/v1/event"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*webhook
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) integrations() ([]*integration, error) {
+	const (
+		path    = "/api/v1/runners"
+		managed = "kubiya-managed"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var tmp map[string]interface{}
+
+	err = json.NewDecoder(resp).Decode(&tmp)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*integration
+
+	if val, ok := tmp[managed]; ok {
+		if items, ok := val.(map[string]interface{}); ok {
+			for integrationName, _ := range items {
+				result = append(result, &integration{
+					Name: integrationName,
+				})
+			}
+		}
+	}
+
+	return result, err
 }
