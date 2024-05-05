@@ -2,13 +2,11 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/clients"
-	"terraform-provider-kubiya/internal/resource_agent"
+	"terraform-provider-kubiya/internal/entities"
 )
 
 var (
@@ -16,7 +14,13 @@ var (
 	_ resource.ResourceWithConfigure = (*agentResource)(nil)
 )
 
+const (
+	defaultModel = "azure/gpt-4"
+	defaultImage = "ghcr.io/kubiyabot/kubiya-agent:stable"
+)
+
 type agentResource struct {
+	name   string
 	client *clients.Client
 }
 
@@ -24,221 +28,116 @@ func NewAgentResource() resource.Resource {
 	return &agentResource{}
 }
 
-func (a *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var plan resource_agent.AgentModel
+func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var state entities.AgentModel
 
-	// Read Terraform prior plan data into the model
-	resp.Diagnostics.Append(req.State.Get(ctx, &plan)...)
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Read API call logic
-	apiReq := plan.Uuid.ValueString()
-	apiResp, err := a.client.GetAgentById(apiReq)
-	if err != nil {
+	if err := r.client.ReadAgent(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
-			"failed to get agent by id",
-			"failed to get agent by id"+err.Error())
-	}
-
-	result := resource_agent.AgentModel{
-		Id:                   types.StringValue(apiResp.Uuid),
-		Name:                 types.StringValue(apiResp.Name),
-		Uuid:                 types.StringValue(apiResp.Uuid),
-		Image:                types.StringValue(apiResp.Image),
-		LlmModel:             types.StringValue(apiResp.LlmModel),
-		Description:          types.StringValue(apiResp.Description),
-		AiInstructions:       types.StringValue(apiResp.AiInstructions),
-		Links:                toListType(&resp.Diagnostics, apiResp.Links...),
-		Owners:               toListType(&resp.Diagnostics, apiResp.Owners...),
-		Runners:              toListType(&resp.Diagnostics, apiResp.Runners...),
-		Secrets:              toListType(&resp.Diagnostics, apiResp.Secrets...),
-		Starters:             toListType(&resp.Diagnostics, apiResp.Starters...),
-		AllowedUsers:         toListType(&resp.Diagnostics, apiResp.AllowedUsers...),
-		Integrations:         toListType(&resp.Diagnostics, apiResp.Integrations...),
-		AllowedGroups:        toListType(&resp.Diagnostics, apiResp.AllowedGroups...),
-		EnvironmentVariables: convertStringMapToMapType(&resp.Diagnostics, apiResp.EnvironmentVariables),
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &result)...)
-
-	// Save updated plan into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (a *agentResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	resp.Schema = resource_agent.AgentResourceSchema(ctx)
-}
-
-func (a *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var plan resource_agent.AgentModel
-
-	// Read Terraform prior plan data into the model
-	resp.Diagnostics.Append(req.State.Get(ctx, &plan)...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Delete API call logic
-	deleteRequest := plan.Uuid.ValueString()
-	err := a.client.DeleteAgent(deleteRequest)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"failed to delete agent by id",
-			"failed to delete agent by id"+err.Error())
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
-}
-
-func (a *agentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan resource_agent.AgentModel
-
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Create API call logic
-	apiReq := clients.Agent{
-		Name:           plan.Name.ValueString(),
-		Image:          plan.Image.ValueString(),
-		LlmModel:       plan.LlmModel.ValueString(),
-		Description:    plan.Description.ValueString(),
-		AiInstructions: plan.AiInstructions.ValueString(),
-
-		Links:                toStringSlice(plan.Links),
-		Owners:               toStringSlice(plan.Owners),
-		Runners:              toStringSlice(plan.Runners),
-		Secrets:              toStringSlice(plan.Secrets),
-		Starters:             toStringSlice(plan.Starters),
-		AllowedUsers:         toStringSlice(plan.AllowedUsers),
-		Integrations:         toStringSlice(plan.Integrations),
-		AllowedGroups:        toStringSlice(plan.AllowedGroups),
-		EnvironmentVariables: convertTypesMapToStringMap(plan.EnvironmentVariables),
-	}
-
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	apiResp, err := a.client.CreateAgent(&apiReq)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to create Agent",
-			"failed to create agent. Error: "+err.Error(),
+			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	result := resource_agent.AgentModel{
-		Id:                   types.StringValue(apiResp.Uuid),
-		Name:                 types.StringValue(apiResp.Name),
-		Uuid:                 types.StringValue(apiResp.Uuid),
-		Image:                types.StringValue(apiResp.Image),
-		LlmModel:             types.StringValue(apiResp.LlmModel),
-		Description:          types.StringValue(apiResp.Description),
-		AiInstructions:       types.StringValue(apiResp.AiInstructions),
-		Links:                toListType(&resp.Diagnostics, apiResp.Links...),
-		Owners:               toListType(&resp.Diagnostics, apiResp.Owners...),
-		Runners:              toListType(&resp.Diagnostics, apiResp.Runners...),
-		Secrets:              toListType(&resp.Diagnostics, apiResp.Secrets...),
-		Starters:             toListType(&resp.Diagnostics, apiResp.Starters...),
-		AllowedUsers:         toListType(&resp.Diagnostics, apiResp.AllowedUsers...),
-		Integrations:         toListType(&resp.Diagnostics, apiResp.Integrations...),
-		AllowedGroups:        toListType(&resp.Diagnostics, apiResp.AllowedGroups...),
-		EnvironmentVariables: convertStringMapToMapType(&resp.Diagnostics, apiResp.EnvironmentVariables),
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &result)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
-func (a *agentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan resource_agent.AgentModel
+func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = entities.AgentSchema()
+}
 
-	// Read Terraform plan data into the model
-	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state entities.AgentModel
 
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	// Update API call logic
-	apiReq := clients.Agent{
-		Name:           plan.Name.ValueString(),
-		Image:          plan.Image.ValueString(),
-		LlmModel:       plan.LlmModel.ValueString(),
-		Description:    plan.Description.ValueString(),
-		AiInstructions: plan.AiInstructions.ValueString(),
-
-		Links:                toStringSlice(plan.Links),
-		Owners:               toStringSlice(plan.Owners),
-		Runners:              toStringSlice(plan.Runners),
-		Secrets:              toStringSlice(plan.Secrets),
-		Starters:             toStringSlice(plan.Starters),
-		AllowedUsers:         toStringSlice(plan.AllowedUsers),
-		Integrations:         toStringSlice(plan.Integrations),
-		AllowedGroups:        toStringSlice(plan.AllowedGroups),
-		EnvironmentVariables: convertTypesMapToStringMap(plan.EnvironmentVariables),
-	}
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	apiResp, err := a.client.CreateAgent(&apiReq)
+	if err := r.client.DeleteAgent(ctx, &state); err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(deleteAction, r.name, err.Error()),
+		)
+	}
+}
+
+func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var plan entities.AgentModel
+
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	state, err := r.client.CreateAgent(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to create Agent",
-			"failed to create agent. Error: "+err.Error(),
+			resourceActionError(createAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	result := resource_agent.AgentModel{
-		Id:                   types.StringValue(apiResp.Uuid),
-		Name:                 types.StringValue(apiResp.Name),
-		Uuid:                 types.StringValue(apiResp.Uuid),
-		Image:                types.StringValue(apiResp.Image),
-		LlmModel:             types.StringValue(apiResp.LlmModel),
-		Description:          types.StringValue(apiResp.Description),
-		AiInstructions:       types.StringValue(apiResp.AiInstructions),
-		Links:                toListType(&resp.Diagnostics, apiResp.Links...),
-		Owners:               toListType(&resp.Diagnostics, apiResp.Owners...),
-		Runners:              toListType(&resp.Diagnostics, apiResp.Runners...),
-		Secrets:              toListType(&resp.Diagnostics, apiResp.Secrets...),
-		Starters:             toListType(&resp.Diagnostics, apiResp.Starters...),
-		AllowedUsers:         toListType(&resp.Diagnostics, apiResp.AllowedUsers...),
-		Integrations:         toListType(&resp.Diagnostics, apiResp.Integrations...),
-		AllowedGroups:        toListType(&resp.Diagnostics, apiResp.AllowedGroups...),
-		EnvironmentVariables: convertStringMapToMapType(&resp.Diagnostics, apiResp.EnvironmentVariables),
-	}
-
-	// Save updated plan into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &result)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (a *agentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan entities.AgentModel
+	var state entities.AgentModel
+
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	updatedState := state
+	if !plan.Image.IsNull() {
+		updatedState.Image = plan.Image
+	}
+
+	if !plan.Model.IsNull() {
+		updatedState.Model = plan.Model
+	}
+
+	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(updateAction, r.name, err.Error()),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
+}
+
+func (r *agentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_agent"
 }
 
-func (a *agentResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	client, ok := req.ProviderData.(*clients.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *clients.AgentsClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+func (r *agentResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	if req.ProviderData != nil {
+		var ok bool
+		var client *clients.Client
 
-		return
-	}
+		if client, ok = req.ProviderData.(*clients.Client); !ok {
+			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
+			return
+		}
 
-	a.client = client
+		r.name = "agent"
+		r.client = client
+	}
 }
