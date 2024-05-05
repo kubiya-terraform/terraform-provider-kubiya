@@ -7,6 +7,7 @@ import (
 
 type WebhookModel struct {
 	Id          types.String `tfsdk:"id"`
+	Url         types.String `tfsdk:"url"`
 	Name        types.String `tfsdk:"name"`
 	Agent       types.String `tfsdk:"agent"`
 	Filter      types.String `tfsdk:"filter"`
@@ -21,14 +22,15 @@ func WebhookSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true},
+			"created_at":  schema.StringAttribute{Computed: true},
+			"created_by":  schema.StringAttribute{Computed: true},
+			"url":         schema.StringAttribute{Required: true},
 			"name":        schema.StringAttribute{Required: true},
 			"agent":       schema.StringAttribute{Required: true},
-			"filter":      schema.StringAttribute{Optional: true},
 			"source":      schema.StringAttribute{Required: true},
 			"prompt":      schema.StringAttribute{Required: true},
 			"destination": schema.StringAttribute{Required: true},
-			"created_at":  schema.StringAttribute{Computed: true},
-			"created_by":  schema.StringAttribute{Computed: true},
+			"filter":      schema.StringAttribute{Optional: true},
 		},
 	}
 }

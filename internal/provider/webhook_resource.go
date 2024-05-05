@@ -16,6 +16,7 @@ var (
 )
 
 type webhookResource struct {
+	name   string
 	client *clients.Client
 }
 
@@ -24,8 +25,8 @@ func NewWebhookResource() resource.Resource {
 }
 
 func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var d entities.WebhookModel
-	diags := req.State.Get(ctx, &d)
+	var state entities.WebhookModel
+	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
@@ -33,11 +34,10 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// Read API call logic
-	result, err := r.client.GetWebhook(&d)
-	if err != nil {
+	if err := r.client.ReadWebhook(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
 			"webhook not found",
-			fmt.Sprintf("webhook by name: %s not found. Error: ", d.Name)+err.Error(),
+			fmt.Sprintf("webhook by name: %s not found. Error: ", state.Name)+err.Error(),
 		)
 	}
 
@@ -46,7 +46,7 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 	}
 
 	// Save updated data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &result)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -68,6 +68,9 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 	if !plan.Id.IsUnknown() && !plan.Id.IsNull() {
 		updatedState.Id = plan.Id
 	}
+	if !plan.Url.IsUnknown() && !plan.Url.IsNull() {
+		updatedState.Url = plan.Url
+	}
 	if !plan.Name.IsUnknown() && !plan.Name.IsNull() {
 		updatedState.Name = plan.Name
 	}
@@ -87,8 +90,7 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		updatedState.Destination = plan.Destination
 	}
 
-	result, err := r.client.UpdateWebhook(&updatedState)
-	if err != nil {
+	if err := r.client.UpdateWebhook(ctx, &updatedState); err != nil {
 		resp.Diagnostics.AddError(
 			"failed to update webhook",
 			"failed to update webhook. Error: "+err.Error(),
@@ -99,8 +101,7 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	diags = resp.State.Set(ctx, &result)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
 func (r *webhookResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -116,7 +117,7 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	result, err := r.client.CreateWebhook(&plan)
+	state, err := r.client.CreateWebhook(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"failed to create webhook",
@@ -128,13 +129,12 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	diags = resp.State.Set(ctx, &result)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data entities.WebhookModel
-	diags := req.State.Get(ctx, &data)
+	var state entities.WebhookModel
+	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
@@ -142,7 +142,7 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 	}
 
 	// Delete API call logic
-	if err := r.client.DeleteWebhook(&data); err != nil {
+	if err := r.client.DeleteWebhook(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
 			"failed to delete webhook",
 			"failed to delete webhook. Error: "+err.Error(),
@@ -155,18 +155,16 @@ func (r *webhookResource) Metadata(_ context.Context, req resource.MetadataReque
 }
 
 func (r *webhookResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-	client, ok := req.ProviderData.(*clients.Client)
-	if !ok {
-		resp.Diagnostics.AddError(
-			"Unexpected Data Source Configure Type",
-			fmt.Sprintf("Expected *clients.AgentsClient, got: %T. Please report this issue to the provider developers.", req.ProviderData),
-		)
+	if req.ProviderData != nil {
+		var ok bool
+		var client *clients.Client
 
-		return
-	}
+		if client, ok = req.ProviderData.(*clients.Client); !ok {
+			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
+			return
+		}
 
-	r.client = client
+		r.name = "webhook"
+		r.client = client
+	}
 }
