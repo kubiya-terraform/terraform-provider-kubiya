@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
@@ -49,6 +48,13 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 }
 
 func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	const (
+		attr    = "user_key"
+		env     = "KUBIYA_USER_KEY"
+		summery = "Unknown Kubiya user_key"
+		details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
+	)
+
 	var cfg entities.ProviderConfig
 	diags := req.Config.Get(ctx, &cfg)
 
@@ -57,26 +63,29 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 
-	if cfg.UserKey.IsNull() ||
-		cfg.UserKey.IsUnknown() {
-		const (
-			attr    = "user_key"
-			env     = "KUBIYA_USER_KEY"
-			summery = "Unknown Kubiya user_key"
-			details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
+	if cfg.UserKey.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root(attr), summery, details,
 		)
-		if v := os.Getenv(env); len(v) >= 1 {
-			cfg.UserKey = types.StringValue(v)
-		} else {
-			resp.Diagnostics.AddAttributeError(
-				path.Root(attr), summery, details)
+	}
 
-			return
-		}
+	userKey := os.Getenv(env)
+	if !cfg.UserKey.IsNull() && cfg.UserKey.ValueString() != "" {
+		userKey = cfg.UserKey.ValueString()
+	}
+
+	if userKey == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root(attr), summery, details,
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
 	// Create a new Kubiya client using the configuration values
-	client, err := clients.New(cfg.UserKey.ValueString())
+	client, err := clients.New(userKey)
 	if err != nil {
 		resp.Diagnostics.AddError(configureProviderError(err))
 		return
