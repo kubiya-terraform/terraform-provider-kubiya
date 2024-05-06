@@ -14,11 +14,6 @@ var (
 	_ resource.ResourceWithConfigure = (*agentResource)(nil)
 )
 
-const (
-	defaultModel = "azure/gpt-4"
-	defaultImage = "ghcr.io/kubiyabot/kubiya-agent:stable"
-)
-
 type agentResource struct {
 	name   string
 	client *clients.Client
