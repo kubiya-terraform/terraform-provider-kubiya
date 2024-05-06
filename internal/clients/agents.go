@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,21 +15,21 @@ import (
 type agent struct {
 	Name                 string            `json:"name"`
 	Uuid                 string            `json:"uuid"`
-	Email                string            `json:"email"`
-	Image                string            `json:"image"`
+	Email                string            `json:"email,omitempty"`
+	Image                string            `json:"image,omitempty"`
 	Links                []string          `json:"links"`
-	Owners               []string          `json:"owners"`
-	Runners              []string          `json:"runners"`
+	Owners               []string          `json:"owners,omitempty"`
+	Runners              []string          `json:"runners,omitempty"`
 	Secrets              []string          `json:"secrets"`
 	Starters             []string          `json:"starters"`
 	Metadata             *metadata         `json:"metadata"`
-	LlmModel             string            `json:"llm_model"`
-	Description          string            `json:"description"`
+	LlmModel             string            `json:"llm_model,omitempty"`
+	Description          string            `json:"description,omitempty"`
 	Integrations         []string          `json:"integrations"`
-	Organization         string            `json:"organization"`
+	Organization         string            `json:"organization,omitempty"`
 	AllowedUsers         []string          `json:"allowed_users"`
 	AllowedGroups        []string          `json:"allowed_groups"`
-	AiInstructions       string            `json:"ai_instructions"`
+	AiInstructions       string            `json:"ai_instructions,omitempty"`
 	EnvironmentVariables map[string]string `json:"environment_variables"`
 }
 
@@ -40,6 +41,7 @@ type metadata struct {
 }
 
 func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
+	var err error
 	users := make([]string, 0)
 	groups := make([]string, 0)
 	runners := make([]string, 0)
@@ -66,53 +68,88 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 	}
 
 	for _, item := range stringList(a.Users.ValueString()) {
+		if len(item) <= 0 {
+			continue
+		}
+		found := false
 		for _, i := range cs.users {
-			if equal(i.Name, item) ||
-				equal(i.Email, item) {
+			if found = equal(i.Name, item) ||
+				equal(i.Email, item); found {
 				users = append(users, i.UUID)
 				break
 			}
 		}
+		if !found {
+			err = errors.Join(err, fmt.Errorf("User \"%s\" don't exist", item))
+		}
 	}
 
 	for _, item := range stringList(a.Groups.ValueString()) {
+		if len(item) <= 0 {
+			continue
+		}
+		found := false
 		for _, i := range cs.groups {
-			if equal(i.Name, item) {
+			if found = equal(i.Name, item); found {
 				groups = append(groups, i.UUID)
 				break
 			}
 		}
+		if !found {
+			err = errors.Join(err, fmt.Errorf("Group \"%s\" don't exist", item))
+		}
 	}
 
 	for _, item := range stringList(a.Runners.ValueString()) {
+		if len(item) <= 0 {
+			continue
+		}
+		found := false
 		for _, i := range cs.runners {
-			if equal(i.Name, item) {
+			if found = equal(i.Name, item); found {
 				runners = append(runners, i.Name)
 				break
 			}
 		}
+		if !found {
+			err = errors.Join(err, fmt.Errorf("Runner \"%s\" don't exist", item))
+		}
 	}
 
 	for _, item := range stringList(a.Secrets.ValueString()) {
+		if len(item) <= 0 {
+			continue
+		}
+		found := false
 		for _, i := range cs.secrets {
-			if equal(i.Name, item) {
+			if found = equal(i.Name, item); found {
 				secrets = append(secrets, i.Name)
 				break
 			}
 		}
+		if !found {
+			err = errors.Join(err, fmt.Errorf("Secret \"%s\" don't exist", item))
+		}
 	}
 
 	for _, item := range stringList(a.Integrations.ValueString()) {
+		if len(item) <= 0 {
+			continue
+		}
+		found := false
 		for _, i := range cs.integrations {
-			if equal(i.Name, item) {
+			if found = equal(i.Name, item); found {
 				integrations = append(integrations, i.Name)
 				break
 			}
 		}
+		if !found {
+			err = errors.Join(err, fmt.Errorf("Integration \"%s\" don't exist", item))
+		}
 	}
 
 	if len(runners) <= 0 {
-		return nil, fmt.Errorf("runners are missing or not exist")
+		err = errors.Join(err, fmt.Errorf("runners cannot be empty. you must have at least one"))
 	}
 
 	return &agent{
@@ -132,7 +169,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		EnvironmentVariables: envVariables,
 		Links:                stringList(a.Links.ValueString()),
 		Starters:             stringList(a.Starters.ValueString()),
-	}, nil
+	}, err
 }
 
 func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
@@ -224,30 +261,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		Variables:    types.StringValue(""),
 	}
 
-	//if len(a.Links) >= 1 {
-	//	result.Users = types.StringValue(strings.Join(a.Links, sep))
-	//}
-	//
-	//if len(intList) >= 1 {
-	//	result.Integrations = types.StringValue(strings.Join(intList, sep))
-	//}
-	//
-	//if len(userList) >= 1 {
-	//	result.Users = types.StringValue(strings.Join(userList, sep))
-	//}
-	//
-	//if len(groupList) >= 1 {
-	//	result.Groups = types.StringValue(strings.Join(groupList, sep))
-	//}
-	//
-	//if len(a.Starters) >= 1 {
-	//	result.Starters = types.StringValue(strings.Join(a.Starters, sep))
-	//}
-	//
-	//if len(secretList) >= 1 {
-	//	result.Secrets = types.StringValue(strings.Join(secretList, sep))
-	//}
-
 	if len(a.EnvironmentVariables) >= 1 {
 		b, err := json.Marshal(a.EnvironmentVariables)
 		if err != nil {
@@ -255,18 +268,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 
 		result.Variables = types.StringValue(string(b))
-
-		//elements := make(map[string]attr.Value)
-		//for key, val := range a.EnvironmentVariables {
-		//	elements[key] = types.StringValue(val)
-		//}
-		//
-		//m, d := types.MapValue(types.StringType, elements)
-		//if !d.HasError() {
-		//	result.Variables = m
-		//} else {
-		//	err = fmt.Errorf("failed to convert EnvironmentVariables to map")
-		//}
 	}
 
 	return result, err
@@ -315,6 +316,7 @@ func (c *Client) UpdateAgent(ctx context.Context, entity *entities.AgentModel) e
 		}
 
 		id := entity.Id.ValueString()
+		entity.Email = types.StringValue("")
 		uri := c.uri(format("/api/v1/agents/%s", id))
 
 		data, err := toAgent(entity, cs)

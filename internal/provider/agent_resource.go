@@ -100,12 +100,61 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	updatedState := state
+
+	if !plan.Email.IsNull() {
+		updatedState.Email = plan.Email
+	}
+
+	if !plan.Name.IsNull() {
+		updatedState.Name = plan.Name
+	}
+
 	if !plan.Image.IsNull() {
 		updatedState.Image = plan.Image
 	}
 
 	if !plan.Model.IsNull() {
 		updatedState.Model = plan.Model
+	}
+
+	if !plan.Links.IsNull() {
+		updatedState.Links = plan.Links
+	}
+
+	if !plan.Users.IsNull() {
+		updatedState.Users = plan.Users
+	}
+
+	if !plan.Groups.IsNull() {
+		updatedState.Groups = plan.Groups
+	}
+
+	if !plan.Runners.IsNull() {
+		updatedState.Runners = plan.Runners
+	}
+
+	if !plan.Secrets.IsNull() {
+		updatedState.Secrets = plan.Secrets
+	}
+
+	if !plan.Starters.IsNull() {
+		updatedState.Starters = plan.Starters
+	}
+
+	if !plan.Variables.IsNull() {
+		updatedState.Variables = plan.Variables
+	}
+
+	if !plan.Description.IsNull() {
+		updatedState.Description = plan.Description
+	}
+
+	if !plan.Instructions.IsNull() {
+		updatedState.Instructions = plan.Instructions
+	}
+
+	if !plan.Integrations.IsNull() {
+		updatedState.Integrations = plan.Integrations
 	}
 
 	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
