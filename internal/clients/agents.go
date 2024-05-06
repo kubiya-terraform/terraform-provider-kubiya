@@ -26,8 +26,8 @@ type agent struct {
 	Description          string            `json:"description"`
 	Integrations         []string          `json:"integrations"`
 	Organization         string            `json:"organization"`
-	AllowedUsers         []string          `json:"allowed_users"`
-	AllowedGroups        []string          `json:"allowed_groups"`
+	Users                []string          `json:"allowed_users"`
+	Groups               []string          `json:"allowed_groups"`
 	AiInstructions       string            `json:"ai_instructions"`
 	EnvironmentVariables map[string]string `json:"environment_variables"`
 }
@@ -124,8 +124,8 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Description:    a.Description.ValueString(),
 		AiInstructions: a.Instructions.ValueString(),
 
-		AllowedUsers:         users,
-		AllowedGroups:        groups,
+		Users:                users,
+		Groups:               groups,
 		Runners:              runners,
 		Secrets:              secrets,
 		Integrations:         integrations,
@@ -186,7 +186,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 			}
 		}
 	}
-	for _, au := range a.AllowedUsers {
+	for _, au := range a.Users {
 		for _, u := range cs.users {
 			if equal(u.UUID, au) {
 				userList = append(userList, u.Email)
@@ -194,7 +194,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 			}
 		}
 	}
-	for _, ag := range a.AllowedGroups {
+	for _, ag := range a.Groups {
 		for _, g := range cs.groups {
 			if equal(g.UUID, ag) {
 				groupList = append(groupList, g.Name)
