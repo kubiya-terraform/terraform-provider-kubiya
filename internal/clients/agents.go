@@ -21,7 +21,7 @@ type agent struct {
 	Owners               []string          `json:"owners,omitempty"`
 	Runners              []string          `json:"runners,omitempty"`
 	Secrets              []string          `json:"secrets"`
-	Starters             []string          `json:"starters"`
+	Starters             []Starter         `json:"starters"`
 	Metadata             *metadata         `json:"metadata"`
 	LlmModel             string            `json:"llm_model,omitempty"`
 	Description          string            `json:"description,omitempty"`
@@ -38,6 +38,11 @@ type metadata struct {
 	LastUpdated     string `json:"last_updated"`
 	UserCreated     string `json:"user_created"`
 	UserLastUpdated string `json:"user_last_updated"`
+}
+
+type Starter struct {
+	DisplayName string `json:"display_name"`
+	Command     string `json:"command"`
 }
 
 func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
@@ -152,6 +157,17 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, fmt.Errorf("runners cannot be empty. you must have at least one"))
 	}
 
+	var starters []Starter
+	if a.Starters.ValueString() == "" {
+		starters = []Starter{}
+	} else {
+		input := a.Starters.ValueString()
+		err = json.Unmarshal([]byte(input), &starters)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &agent{
 		Uuid:           a.Id.ValueString(),
 		Name:           a.Name.ValueString(),
@@ -168,7 +184,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Integrations:         integrations,
 		EnvironmentVariables: envVariables,
 		Links:                stringList(a.Links.ValueString()),
-		Starters:             stringList(a.Starters.ValueString()),
+		Starters:             starters,
 	}, err
 }
 
@@ -186,6 +202,15 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	var groupList []string
 	var runnerList []string
 	var secretList []string
+	var starters string
+
+	if len(a.Starters) > 0 {
+		jsonBytes, err := json.Marshal(a.Starters)
+		if err != nil {
+			starters = ""
+		}
+		starters = string(jsonBytes)
+	}
 
 	if a.Metadata != nil {
 		at = a.Metadata.CreatedAt
@@ -255,7 +280,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		Links:        types.StringValue(strings.Join(a.Links, sep)),
 		Integrations: types.StringValue(strings.Join(intList, sep)),
 		Users:        types.StringValue(strings.Join(userList, sep)),
-		Starters:     types.StringValue(strings.Join(a.Starters, sep)),
+		Starters:     types.StringValue(starters),
 		Groups:       types.StringValue(strings.Join(groupList, sep)),
 		Secrets:      types.StringValue(strings.Join(secretList, sep)),
 		Variables:    types.StringValue(""),
