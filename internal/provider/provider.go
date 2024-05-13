@@ -50,9 +50,9 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	const (
 		attr    = "api_key"
-		env     = "KUBIYA_USER_KEY"
-		summery = "Unknown Kubiya user_key"
-		details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
+		env     = "KUBIYA_API_KEY"
+		summery = "Unknown Kubiya api_key"
+		details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API api_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_API_KEY environment variable."
 	)
 
 	var cfg entities.ProviderConfig
@@ -63,15 +63,15 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 
-	if cfg.UserKey.IsUnknown() {
+	if cfg.ApiKey.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root(attr), summery, details,
 		)
 	}
 
 	apiKey := os.Getenv(env)
-	if !cfg.UserKey.IsNull() && cfg.UserKey.ValueString() != "" {
-		apiKey = cfg.UserKey.ValueString()
+	if !cfg.ApiKey.IsNull() && cfg.ApiKey.ValueString() != "" {
+		apiKey = cfg.ApiKey.ValueString()
 	}
 
 	if apiKey == "" {

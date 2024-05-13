@@ -21,7 +21,7 @@ func New(uk string) (*Client, error) {
 		return &Client{userKey: uk, client: client, host: host}, nil
 	}
 
-	return nil, eformat("UserKey is missing or empty")
+	return nil, eformat("ApiKey is missing or empty")
 }
 
 func (c *Client) self() (*user, error) {
