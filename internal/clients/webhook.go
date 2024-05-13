@@ -41,6 +41,7 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		Filter:     w.Filter.ValueString(),
 		Prompt:     w.Prompt.ValueString(),
 		Source:     w.Source.ValueString(),
+		CreatedBy:  w.CreatedBy.ValueString(),
 	}
 
 	for _, a := range cs.agents {

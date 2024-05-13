@@ -6,13 +6,13 @@ import (
 )
 
 type ProviderConfig struct {
-	UserKey types.String `tfsdk:"user_key"`
+	ApiKey types.String `tfsdk:"api_key"`
 }
 
 func ProviderConfigSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"user_key": schema.StringAttribute{
+			"api_key": schema.StringAttribute{
 				Required:  true,
 				Sensitive: false,
 			},
