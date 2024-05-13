@@ -21,7 +21,7 @@ type agent struct {
 	Owners               []string          `json:"owners,omitempty"`
 	Runners              []string          `json:"runners,omitempty"`
 	Secrets              []string          `json:"secrets"`
-	Starters             []Starter         `json:"starters"`
+	Starters             []starter         `json:"starters"`
 	Metadata             *metadata         `json:"metadata"`
 	LlmModel             string            `json:"llm_model,omitempty"`
 	Description          string            `json:"description,omitempty"`
@@ -40,7 +40,7 @@ type metadata struct {
 	UserLastUpdated string `json:"user_last_updated"`
 }
 
-type Starter struct {
+type starter struct {
 	DisplayName string `json:"display_name"`
 	Command     string `json:"command"`
 }
@@ -157,9 +157,9 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, fmt.Errorf("runners cannot be empty. you must have at least one"))
 	}
 
-	var starters []Starter
+	var starters []starter
 	if a.Starters.ValueString() == "" {
-		starters = []Starter{}
+		starters = []starter{}
 	} else {
 		input := a.Starters.ValueString()
 		err = json.Unmarshal([]byte(input), &starters)
