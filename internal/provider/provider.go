@@ -49,7 +49,7 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 
 func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	const (
-		attr    = "user_key"
+		attr    = "api_key"
 		env     = "KUBIYA_USER_KEY"
 		summery = "Unknown Kubiya user_key"
 		details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API user_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_USER_KEY environment variable."
@@ -69,12 +69,12 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 		)
 	}
 
-	userKey := os.Getenv(env)
+	apiKey := os.Getenv(env)
 	if !cfg.UserKey.IsNull() && cfg.UserKey.ValueString() != "" {
-		userKey = cfg.UserKey.ValueString()
+		apiKey = cfg.UserKey.ValueString()
 	}
 
-	if userKey == "" {
+	if apiKey == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root(attr), summery, details,
 		)
@@ -85,7 +85,7 @@ func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRe
 	}
 
 	// Create a new Kubiya client using the configuration values
-	client, err := clients.New(userKey)
+	client, err := clients.New(apiKey)
 	if err != nil {
 		resp.Diagnostics.AddError(configureProviderError(err))
 		return
