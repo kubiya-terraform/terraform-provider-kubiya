@@ -23,7 +23,7 @@ func WebhookSchema() schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"id":          schema.StringAttribute{Computed: true},
 			"created_at":  schema.StringAttribute{Computed: true},
-			"created_by":  schema.StringAttribute{Required: true},
+			"created_by":  schema.StringAttribute{Computed: true},
 			"url":         schema.StringAttribute{Computed: true},
 			"name":        schema.StringAttribute{Required: true},
 			"agent":       schema.StringAttribute{Required: true},
