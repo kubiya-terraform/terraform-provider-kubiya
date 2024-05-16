@@ -172,7 +172,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Uuid:           a.Id.ValueString(),
 		Name:           a.Name.ValueString(),
 		Image:          a.Image.ValueString(),
-		LlmModel:       a.Model.ValueString(),
+		LlmModel:       a.LlmModel.ValueString(),
 		Email:          a.Email.ValueString(),
 		Description:    a.Description.ValueString(),
 		AiInstructions: a.Instructions.ValueString(),
