@@ -22,6 +22,7 @@ type agent struct {
 	Runners              []string          `json:"runners,omitempty"`
 	Secrets              []string          `json:"secrets"`
 	Starters             []starter         `json:"starters"`
+	Tasks                []task            `json:"tasks"`
 	Metadata             *metadata         `json:"metadata"`
 	LlmModel             string            `json:"llm_model,omitempty"`
 	Description          string            `json:"description,omitempty"`
@@ -43,6 +44,12 @@ type metadata struct {
 type starter struct {
 	DisplayName string `json:"display_name"`
 	Command     string `json:"command"`
+}
+
+type task struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Prompt      string `json:"prompt"`
 }
 
 func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
@@ -168,6 +175,11 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		}
 	}
 
+	tasks := make([]task, 0)
+	if a.Tasks.ValueString() != "" {
+		err = json.Unmarshal([]byte(a.Tasks.ValueString()), &tasks)
+	}
+
 	return &agent{
 		Uuid:           a.Id.ValueString(),
 		Name:           a.Name.ValueString(),
@@ -185,6 +197,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		EnvironmentVariables: envVariables,
 		Links:                stringList(a.Links.ValueString()),
 		Starters:             starters,
+		Tasks:                tasks,
 	}, err
 }
 
@@ -203,13 +216,24 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	var runnerList []string
 	var secretList []string
 	var starters string
+	var tasks string
+
+	if len(a.Tasks) > 0 {
+		jsonBytes, err := json.Marshal(a.Tasks)
+		if err != nil {
+			tasks = ""
+		} else {
+			tasks = string(jsonBytes)
+		}
+	}
 
 	if len(a.Starters) > 0 {
 		jsonBytes, err := json.Marshal(a.Starters)
 		if err != nil {
 			starters = ""
+		} else {
+			starters = string(jsonBytes)
 		}
-		starters = string(jsonBytes)
 	}
 
 	if a.Metadata != nil {
@@ -284,6 +308,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		Groups:       types.StringValue(strings.Join(groupList, sep)),
 		Secrets:      types.StringValue(strings.Join(secretList, sep)),
 		Variables:    types.StringValue(""),
+		Tasks:        types.StringValue(tasks),
 	}
 
 	if len(a.EnvironmentVariables) >= 1 {

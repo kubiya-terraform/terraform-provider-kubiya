@@ -27,6 +27,7 @@ type AgentModel struct {
 	Starters     types.String `tfsdk:"starters"`     // list
 	Variables    types.String `tfsdk:"env_vars"`     // map[string]string
 	Integrations types.String `tfsdk:"integrations"` // list
+	Tasks        types.String `tfsdk:"tasks"`        // list
 }
 
 func AgentSchema() schema.Schema {
@@ -57,6 +58,7 @@ func AgentSchema() schema.Schema {
 			"env_vars":     schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(empty)},
 			"model":        schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(defaultModel)},
 			"image":        schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(defaultImage)},
+			"tasks":        schema.StringAttribute{Optional: true, Computed: true, Default: stringdefault.StaticString(empty)},
 		},
 	}
 }
