@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
@@ -80,6 +81,13 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 			resourceActionError(createAction, r.name, err.Error()),
 		)
 		return
+	}
+
+	if len(state.Tasks.ValueString()) == len(plan.Tasks.ValueString()) {
+		state.Tasks = types.StringValue(plan.Tasks.ValueString())
+	}
+	if len(state.Starters.ValueString()) == len(plan.Starters.ValueString()) {
+		state.Starters = types.StringValue(plan.Starters.ValueString())
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)

@@ -141,12 +141,13 @@ func (c *Client) DeleteWebhook(ctx context.Context, entity *entities.WebhookMode
 	if entity != nil {
 		const (
 			ok     = ""
-			path   = "/api/v1/agents/%s"
+			path   = "/api/v1/event/%s"
 			errMsg = "failed to delete webhook - %s"
 		)
 
 		id := entity.Id.ValueString()
-		resp, err := c.delete(ctx, format(path, id))
+		uri := c.uri(fmt.Sprintf(path, id))
+		resp, err := c.delete(ctx, uri)
 		if err != nil {
 			return err
 		}
