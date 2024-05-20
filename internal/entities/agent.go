@@ -33,7 +33,7 @@ type AgentModel struct {
 func AgentSchema() schema.Schema {
 	const (
 		empty        = ""
-		defaultModel = "azure/gpt-4"
+		defaultModel = "azure/gpt-4-32k"
 		defaultImage = "ghcr.io/kubiyabot/kubiya-agent:stable"
 	)
 
