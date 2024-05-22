@@ -41,7 +41,7 @@ func toPathYaml(pre, suf string) string {
 
 func toJson(item interface{}) (io.Reader, error) {
 	if item != nil {
-		body, err := json.Marshal(item)
+		body, err := toJsonBytes(item)
 		if err != nil || len(body) <= 0 {
 			if err != nil {
 				return nil, err
@@ -50,6 +50,22 @@ func toJson(item interface{}) (io.Reader, error) {
 			return nil, fmt.Errorf("item is nil")
 		}
 		return bytes.NewReader(body), nil
+	}
+
+	return nil, fmt.Errorf("item is nil")
+}
+
+func toJsonBytes(item interface{}) ([]byte, error) {
+	if item != nil {
+		body, err := json.Marshal(item)
+		if err != nil || len(body) <= 0 {
+			if err != nil {
+				return nil, err
+			}
+
+			return nil, fmt.Errorf("item is nil")
+		}
+		return body, nil
 	}
 
 	return nil, fmt.Errorf("item is nil")
