@@ -116,10 +116,8 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 	}
 
 	for _, v := range a.Users {
-		//for _, v := range a.Users.Elements() {
 		item := v
 		found := false
-		//item := cleanString(v.String())
 		for _, i := range cs.users {
 			if found = equal(i.Name, item) ||
 				equal(i.Email, item); found {
