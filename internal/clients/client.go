@@ -232,7 +232,7 @@ func (c *Client) integrations() ([]*integration, error) {
 
 	if val, ok := tmp[managed]; ok {
 		if items, ok := val.(map[string]interface{}); ok {
-			for integrationName, _ := range items {
+			for integrationName := range items {
 				result = append(result, &integration{
 					Name: integrationName,
 				})
