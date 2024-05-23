@@ -2,7 +2,7 @@ package provider
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
@@ -13,6 +13,7 @@ import (
 var (
 	_ resource.Resource              = (*agentResource)(nil)
 	_ resource.ResourceWithConfigure = (*agentResource)(nil)
+	//_ resource.ResourceWithImportState = (*agentResource)(nil)
 )
 
 type agentResource struct {
@@ -25,16 +26,16 @@ func NewAgentResource() resource.Resource {
 }
 
 func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var state entities.AgentModel
+	var plan entities.AgentModel
 
-	diags := req.State.Get(ctx, &state)
+	diags := req.State.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if err := r.client.ReadAgent(ctx, &state); err != nil {
+	state, err := r.client.ReadAgent(ctx, &plan)
+	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
@@ -76,18 +77,12 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	state, err := r.client.CreateAgent(ctx, &plan)
+	log.Printf("[104]: state: %v, error: %v\n", state, err)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
 		)
 		return
-	}
-
-	if len(state.Tasks.ValueString()) == len(plan.Tasks.ValueString()) {
-		state.Tasks = types.StringValue(plan.Tasks.ValueString())
-	}
-	if len(state.Starters.ValueString()) == len(plan.Starters.ValueString()) {
-		state.Starters = types.StringValue(plan.Starters.ValueString())
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
@@ -99,80 +94,58 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
-
-	diags = req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	updatedState := state
-
-	if !plan.Email.IsNull() {
-		updatedState.Email = plan.Email
+	diags = req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
 	}
 
-	if !plan.Name.IsNull() {
-		updatedState.Name = plan.Name
+	if !state.Id.IsNull() &&
+		!state.Id.IsUnknown() {
+		plan.Id = state.Id
 	}
 
-	if !plan.Image.IsNull() {
-		updatedState.Image = plan.Image
+	if !state.Owner.IsNull() &&
+		!state.Owner.IsUnknown() {
+		plan.Owner = state.Owner
 	}
 
-	if !plan.Model.IsNull() {
-		updatedState.Model = plan.Model
+	if !state.CreatedAt.IsNull() &&
+		!state.CreatedAt.IsUnknown() {
+		plan.CreatedAt = state.Id
 	}
 
-	if !plan.Links.IsNull() {
-		updatedState.Links = plan.Links
-	}
-
-	if !plan.Users.IsNull() {
-		updatedState.Users = plan.Users
-	}
-
-	if !plan.Groups.IsNull() {
-		updatedState.Groups = plan.Groups
-	}
-
-	if !plan.Runners.IsNull() {
-		updatedState.Runners = plan.Runners
-	}
-
-	if !plan.Secrets.IsNull() {
-		updatedState.Secrets = plan.Secrets
-	}
-
-	if !plan.Starters.IsNull() {
-		updatedState.Starters = plan.Starters
-	}
-
-	if !plan.Variables.IsNull() {
-		updatedState.Variables = plan.Variables
-	}
-
-	if !plan.Description.IsNull() {
-		updatedState.Description = plan.Description
-	}
-
-	if !plan.Instructions.IsNull() {
-		updatedState.Instructions = plan.Instructions
-	}
-
-	if !plan.Integrations.IsNull() {
-		updatedState.Integrations = plan.Integrations
-	}
-
-	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
+	agent, err := r.client.UpdateAgent(ctx, &plan)
+	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(updateAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
+	// Required
+	state.Name = agent.Name
+	state.Image = agent.Image
+	state.Model = agent.Model
+	state.Runner = agent.Runner
+	state.Description = agent.Description
+	state.Instructions = agent.Instructions
+
+	// Optional
+	state.Tasks = agent.Tasks
+	state.Links = agent.Links
+	state.Users = agent.Users
+	state.Groups = agent.Groups
+	state.Secrets = agent.Secrets
+	state.Starters = agent.Starters
+	state.Variables = agent.Variables
+	state.Integrations = agent.Integrations
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *agentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
