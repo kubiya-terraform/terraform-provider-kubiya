@@ -5,12 +5,11 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
-	"terraform-provider-kubiya/internal/entities"
 )
 
 type kubiyaProvider struct {
@@ -41,7 +40,7 @@ func (p *kubiyaProvider) DataSources(_ context.Context) []func() datasource.Data
 }
 
 func (p *kubiyaProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = entities.ProviderConfigSchema()
+	resp.Schema = schema.Schema{}
 }
 
 func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -50,45 +49,21 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 
 func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	const (
-		attr    = "api_key"
 		env     = "KUBIYA_API_KEY"
-		summery = "Unknown Kubiya api_key"
-		details = "The provider cannot create the Kubiya API client as there is an unknown configuration value for the Kubiya API api_key. Either target apply the source of the value first, set the value statically in the configuration, or use the KUBIYA_API_KEY environment variable."
+		summery = "Kubiya API Key Not Configured"
+		details = "Please set the Kubiya API Key using the environment variable 'KUBIYA_API_KEY'. Use the command below:\n> export KUBIYA_API_KEY=YOUR_API_KEY"
 	)
 
-	var cfg entities.ProviderConfig
-	diags := req.Config.Get(ctx, &cfg)
-
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	if cfg.ApiKey.IsUnknown() {
-		resp.Diagnostics.AddAttributeError(
-			path.Root(attr), summery, details,
-		)
-	}
-
 	apiKey := os.Getenv(env)
-	if !cfg.ApiKey.IsNull() && cfg.ApiKey.ValueString() != "" {
-		apiKey = cfg.ApiKey.ValueString()
-	}
-
-	if apiKey == "" {
-		resp.Diagnostics.AddAttributeError(
-			path.Root(attr), summery, details,
-		)
-	}
-
-	if resp.Diagnostics.HasError() {
+	if len(apiKey) <= 0 {
+		resp.Diagnostics.AddError(summery, details)
 		return
 	}
 
 	// Create a new Kubiya client using the configuration values
 	client, err := clients.New(apiKey)
 	if err != nil {
-		resp.Diagnostics.AddError(configureProviderError(err))
+		resp.Diagnostics.AddError(summery, details)
 		return
 	}
 

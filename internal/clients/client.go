@@ -208,8 +208,9 @@ func (c *Client) webhooks() ([]*webhook, error) {
 
 func (c *Client) integrations() ([]*integration, error) {
 	const (
-		path    = "/api/v1/runners"
-		managed = "kubiya-managed"
+		path            = "/api/v1/runners"
+		managed         = "kubiya-managed"
+		pathIntegration = "/api/v2/integrations"
 	)
 
 	uri := c.uri(path)
@@ -237,6 +238,24 @@ func (c *Client) integrations() ([]*integration, error) {
 				})
 			}
 		}
+	}
+
+	resp, err = c.read(ctx,
+		c.uri(pathIntegration))
+	if err != nil {
+		return nil, err
+	}
+
+	var tmpList []*integrationApi
+	err = json.NewDecoder(resp).Decode(&tmpList)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, item := range tmpList {
+		result = append(result, &integration{
+			Name: item.Name,
+		})
 	}
 
 	return result, err
