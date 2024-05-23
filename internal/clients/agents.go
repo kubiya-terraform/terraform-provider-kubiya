@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -54,15 +53,6 @@ type metadata struct {
 	LastUpdated     string `json:"last_updated"`
 	UserCreated     string `json:"user_created"`
 	UserLastUpdated string `json:"user_last_updated"`
-}
-
-func cleanString(str string) string {
-	const (
-		empty = ""
-		dash  = "\""
-	)
-
-	return strings.ReplaceAll(str, dash, empty)
 }
 
 func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {

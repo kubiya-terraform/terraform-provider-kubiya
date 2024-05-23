@@ -47,7 +47,7 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 	resp.TypeName = "kubiya"
 }
 
-func (p *kubiyaProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (p *kubiyaProvider) Configure(_ context.Context, _ provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	const (
 		env     = "KUBIYA_API_KEY"
 		summery = "Kubiya API Key Not Configured"
