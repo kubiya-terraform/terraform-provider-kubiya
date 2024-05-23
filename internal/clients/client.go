@@ -228,7 +228,9 @@ func (c *Client) integrations() ([]*integration, error) {
 		return nil, err
 	}
 
-	var result []*integration
+	result := []*integration{
+		{Name: "slack"},
+	}
 
 	if val, ok := tmp[managed]; ok {
 		if items, ok := val.(map[string]interface{}); ok {
