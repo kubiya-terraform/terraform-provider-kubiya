@@ -1,82 +1,32 @@
 package provider
 
-import (
-	"fmt"
-	"strings"
+import "fmt"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+const (
+	readAction   = "read"
+	createAction = "create"
+	deleteAction = "delete"
+	updateAction = "update"
 )
 
-func eformat(l string, i ...any) error {
-	return fmt.Errorf(l, i...)
+func configResourceError(t any) (string, string) {
+	const (
+		summary = "Unexpected Data Source Configure Type"
+		details = "Expected *clients.Client, got: %T. Please report this issue to the provider developers."
+	)
+
+	return summary, format(details, t)
 }
 
 func format(l string, i ...any) string {
 	return fmt.Sprintf(l, i...)
 }
 
-func cleanString(str string) string {
-	remove := "\""
-	return strings.TrimSuffix(strings.TrimPrefix(str, remove), remove)
-}
+func resourceActionError(action, name, err string) (string, string) {
+	const (
+		summary = "Failed to %s %s resource."
+		details = "Could not %s %s data. Error: %s"
+	)
 
-func splitToStringList(str string) []string {
-	prefix := "["
-	suffix := "]"
-	str = strings.TrimPrefix(str, prefix)
-	return strings.Split(strings.TrimSuffix(str, suffix), ",")
-}
-
-func toStringSlice(item types.List) []string {
-	var result []string
-	for _, str := range splitToStringList(item.String()) {
-		result = append(result, cleanString(str))
-	}
-	return result
-}
-
-func convertTypesMapToStringMap(input types.Map) map[string]string {
-	result := make(map[string]string)
-	if input.IsNull() || input.IsUnknown() {
-		return result
-	}
-
-	for key, val := range input.Elements() {
-		str, ok := val.(types.String)
-		if ok && !str.IsNull() && !str.IsUnknown() {
-			result[key] = str.ValueString()
-		}
-	}
-
-	return result
-}
-
-func toListType(diags *diag.Diagnostics, items ...string) types.List {
-	var list []attr.Value
-	for _, item := range items {
-		list = append(list, types.StringValue(cleanString(item)))
-	}
-
-	result, d := types.ListValue(types.StringType, list)
-	if d.HasError() {
-		diags.Append(d.Errors()...)
-	}
-
-	return result
-}
-
-func convertStringMapToMapType(diags *diag.Diagnostics, input map[string]string) types.Map {
-	elements := make(map[string]attr.Value)
-	for key, val := range input {
-		elements[key] = types.StringValue(val)
-	}
-
-	result, d := types.MapValue(types.StringType, elements)
-	if d.HasError() {
-		diags.Append(d...)
-	}
-
-	return result
+	return format(summary, action, name), format(details, action, name, err)
 }

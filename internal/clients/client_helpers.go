@@ -79,9 +79,10 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 
 			response := string(b)
 			statusCode := resp.StatusCode
+			requestUrl := req.URL.String()
 
-			err = errors.Join(err, eformat("request has failed. status code: %d, response: %s",
-				statusCode, response))
+			err = errors.Join(err, eformat("request :%s has failed. status code: %d, response: %s",
+				requestUrl, statusCode, response))
 		}
 
 		return resp, err
