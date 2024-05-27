@@ -24,23 +24,22 @@ func NewAgentResource() resource.Resource {
 }
 
 func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var plan entities.AgentModel
+	var state entities.AgentModel
 
-	diags := req.State.Get(ctx, &plan)
+	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	state, err := r.client.ReadAgent(ctx, &plan)
-	if err != nil {
+	if err := r.client.ReadAgent(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -65,16 +64,16 @@ func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 }
 
 func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	plan := &entities.AgentModel{}
+	var plan entities.AgentModel
 
-	diags := req.Plan.Get(ctx, plan)
+	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	state, err := r.client.CreateAgent(ctx, plan)
+	state, err := r.client.CreateAgent(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
