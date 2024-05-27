@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
@@ -13,7 +12,6 @@ import (
 var (
 	_ resource.Resource              = (*agentResource)(nil)
 	_ resource.ResourceWithConfigure = (*agentResource)(nil)
-	//_ resource.ResourceWithImportState = (*agentResource)(nil)
 )
 
 type agentResource struct {
@@ -67,17 +65,16 @@ func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 }
 
 func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var plan entities.AgentModel
+	plan := &entities.AgentModel{}
 
-	diags := req.Plan.Get(ctx, &plan)
+	diags := req.Plan.Get(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	state, err := r.client.CreateAgent(ctx, &plan)
-	log.Printf("[104]: state: %v, error: %v\n", state, err)
+	state, err := r.client.CreateAgent(ctx, plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
@@ -94,9 +91,6 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
 
 	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -104,48 +98,65 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	if !state.Id.IsNull() &&
-		!state.Id.IsUnknown() {
-		plan.Id = state.Id
+	updatedState := state
+	updatedState.Tasks = plan.Tasks
+	updatedState.Starters = plan.Starters
+
+	if !plan.Id.IsNull() && !plan.Id.IsUnknown() {
+		updatedState.Id = plan.Id
+	}
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
+		updatedState.Name = plan.Name
+	}
+	if !plan.Image.IsNull() && !plan.Image.IsUnknown() {
+		updatedState.Image = plan.Image
+	}
+	if !plan.Model.IsNull() && !plan.Model.IsUnknown() {
+		updatedState.Model = plan.Model
+	}
+	if !plan.Owner.IsNull() && !plan.Owner.IsUnknown() {
+		updatedState.Owner = plan.Owner
+	}
+	if !plan.Runner.IsNull() && !plan.Runner.IsUnknown() {
+		updatedState.Runner = plan.Runner
+	}
+	if !plan.CreatedAt.IsNull() && !plan.CreatedAt.IsUnknown() {
+		updatedState.CreatedAt = plan.CreatedAt
+	}
+	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
+		updatedState.Description = plan.Description
+	}
+	if !plan.Instructions.IsNull() && !plan.Instructions.IsUnknown() {
+		updatedState.Instructions = plan.Instructions
 	}
 
-	if !state.Owner.IsNull() &&
-		!state.Owner.IsUnknown() {
-		plan.Owner = state.Owner
+	if !plan.Links.IsNull() && !plan.Links.IsUnknown() {
+		updatedState.Links = plan.Links
+	}
+	if !plan.Users.IsNull() && !plan.Users.IsUnknown() {
+		updatedState.Users = plan.Users
+	}
+	if !plan.Groups.IsNull() && !plan.Groups.IsUnknown() {
+		updatedState.Groups = plan.Groups
+	}
+	if !plan.Secrets.IsNull() && !plan.Secrets.IsUnknown() {
+		updatedState.Secrets = plan.Secrets
+	}
+	if !plan.Variables.IsNull() && !plan.Variables.IsUnknown() {
+		updatedState.Variables = plan.Variables
+	}
+	if !plan.Integrations.IsNull() && !plan.Integrations.IsUnknown() {
+		updatedState.Integrations = plan.Integrations
 	}
 
-	if !state.CreatedAt.IsNull() &&
-		!state.CreatedAt.IsUnknown() {
-		plan.CreatedAt = state.Id
-	}
-
-	agent, err := r.client.UpdateAgent(ctx, &plan)
-	if err != nil {
+	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(updateAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	// Required
-	state.Name = agent.Name
-	state.Image = agent.Image
-	state.Model = agent.Model
-	state.Runner = agent.Runner
-	state.Description = agent.Description
-	state.Instructions = agent.Instructions
-
-	// Optional
-	state.Tasks = agent.Tasks
-	state.Links = agent.Links
-	state.Users = agent.Users
-	state.Groups = agent.Groups
-	state.Secrets = agent.Secrets
-	state.Starters = agent.Starters
-	state.Variables = agent.Variables
-	state.Integrations = agent.Integrations
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
 func (r *agentResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
