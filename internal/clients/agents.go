@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
@@ -61,12 +61,12 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 	result := &agent{
 		Uuid:           a.Id.ValueString(),
-		Name:           a.Name,
-		Image:          a.Image,
-		LlmModel:       a.Model,
-		Description:    a.Description,
-		AiInstructions: a.Instructions,
-		Runners:        []string{a.Runner},
+		Name:           a.Name.ValueString(),
+		Image:          a.Image.ValueString(),
+		LlmModel:       a.Model.ValueString(),
+		Description:    a.Description.ValueString(),
+		AiInstructions: a.Instructions.ValueString(),
+		Runners:        []string{a.Runner.ValueString()},
 
 		Email:        "",
 		Organization: "",
@@ -85,7 +85,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 	}
 
 	for _, v := range cs.runners {
-		item := a.Runner
+		item := a.Runner.ValueString()
 		if validRunner = equal(v.Name, item); validRunner {
 			break
 		}
@@ -104,6 +104,65 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		})
 	}
 
+	for _, v := range a.Links.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			str := v.String()
+			result.Links = append(result.Links, strings.ReplaceAll(str, "\"", ""))
+		}
+	}
+
+	for _, v := range a.Users.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			found := false
+			str := v.String()
+			item := strings.ReplaceAll(str, "\"", "")
+			for _, i := range cs.users {
+				if found = equal(i.Name, item) ||
+					equal(i.Email, item); found {
+					result.Users = append(result.Users, i.UUID)
+					break
+				}
+			}
+			if !found {
+				err = errors.Join(err, fmt.Errorf("user \"%s\" don't exist", item))
+			}
+		}
+	}
+
+	for _, v := range a.Groups.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			found := false
+			str := v.String()
+			item := strings.ReplaceAll(str, "\"", "")
+			for _, i := range cs.groups {
+				if found = equal(i.Name, item); found {
+					result.Groups = append(result.Groups, i.UUID)
+					break
+				}
+			}
+			if !found {
+				err = errors.Join(err, fmt.Errorf("group \"%s\" don't exist", v))
+			}
+		}
+	}
+
+	for _, v := range a.Secrets.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			found := false
+			str := v.String()
+			item := strings.ReplaceAll(str, "\"", "")
+			for _, i := range cs.secrets {
+				if found = equal(i.Name, item); found {
+					result.Secrets = append(result.Secrets, i.Name)
+					break
+				}
+			}
+			if !found {
+				err = errors.Join(err, fmt.Errorf("secret \"%s\" don't exist", v))
+			}
+		}
+	}
+
 	for _, v := range a.Starters {
 		result.Starters = append(result.Starters, starter{
 			Name:    v.Name,
@@ -111,74 +170,25 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		})
 	}
 
-	for _, v := range a.Links {
-		result.Links = append(result.Links, v)
-	}
-
-	for _, v := range a.Users {
-		item := v
-		found := false
-		for _, i := range cs.users {
-			if found = equal(i.Name, item) ||
-				equal(i.Email, item); found {
-				result.Users = append(result.Users, i.UUID)
-				break
+	for _, v := range a.Integrations.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			found := false
+			str := v.String()
+			item := strings.ReplaceAll(str, "\"", "")
+			for _, i := range cs.integrations {
+				if found = equal(i.Name, item); found {
+					result.Integrations = append(result.Integrations, i.Name)
+					break
+				}
 			}
-		}
-		if !found {
-			err = errors.Join(err, fmt.Errorf("user \"%s\" don't exist", item))
-		}
-	}
-
-	for _, v := range a.Groups {
-		found := false
-		for _, i := range cs.groups {
-			if found = equal(i.Name, v); found {
-				result.Groups = append(result.Groups, i.UUID)
-				break
+			if !found {
+				err = errors.Join(err, fmt.Errorf("integration \"%s\" don't exist", v))
 			}
-		}
-		if !found {
-			err = errors.Join(err, fmt.Errorf("group \"%s\" don't exist", v))
 		}
 	}
 
-	for _, v := range a.Secrets {
-		found := false
-		for _, i := range cs.secrets {
-			if found = equal(i.Name, v); found {
-				result.Secrets = append(result.Secrets, i.Name)
-				break
-			}
-		}
-		if !found {
-			err = errors.Join(err, fmt.Errorf("secret \"%s\" don't exist", v))
-		}
-	}
-
-	for key, v := range a.Variables.Elements() {
-		if len(key) >= 1 {
-			val, ok := v.(types.String)
-			if ok && !val.IsNull() && !val.IsUnknown() {
-				result.Variables[key] = val.ValueString()
-			}
-		} else {
-			val := v.String()
-			err = errors.Join(err, eformat("\"env_vars\" have missing key: '%s' val: '%' ", key, val))
-		}
-	}
-
-	for _, v := range a.Integrations {
-		found := false
-		for _, i := range cs.integrations {
-			if found = equal(i.Name, v); found {
-				result.Integrations = append(result.Integrations, i.Name)
-				break
-			}
-		}
-		if !found {
-			err = errors.Join(err, fmt.Errorf("integration \"%s\" don't exist", v))
-		}
+	for key, value := range a.Variables.Elements() {
+		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
 	}
 
 	return result, err
@@ -188,12 +198,15 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	var err error
 	result := &entities.AgentModel{
 		Id:           types.StringValue(a.Uuid),
-		Name:         a.Name,
-		Image:        a.Image,
-		Model:        a.LlmModel,
-		Description:  a.Description,
-		Instructions: a.AiInstructions,
+		Name:         types.StringValue(a.Name),
+		Image:        types.StringValue(a.Image),
+		Model:        types.StringValue(a.LlmModel),
+		Description:  types.StringValue(a.Description),
+		Instructions: types.StringValue(a.AiInstructions),
 	}
+
+	usersList := make([]string, 0)
+	groupList := make([]string, 0)
 
 	if a.Metadata != nil {
 		for _, u := range cs.users {
@@ -206,90 +219,60 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		result.CreatedAt = types.StringValue(a.Metadata.UserCreated)
 	}
 
+	if len(a.Runners) >= 1 {
+		result.Runner = types.StringValue(a.Runners[0])
+	}
+
 	if len(a.Tasks) >= 1 {
 		result.Tasks = make([]entities.TaskModel, 0)
-		for _, item := range a.Tasks {
+		for _, t := range a.Tasks {
 			result.Tasks = append(result.Tasks, entities.TaskModel{
-				Name:        item.Name,
-				Prompt:      item.Prompt,
-				Description: item.Description,
+				Name:        t.Name,
+				Prompt:      t.Prompt,
+				Description: t.Description,
 			})
-		}
-	}
-
-	if len(a.Links) >= 1 {
-		result.Links = make([]string, 0)
-		for _, item := range a.Links {
-			result.Links = append(result.Links, item)
-		}
-	}
-
-	if len(a.Users) >= 1 {
-		result.Users = make([]string, 0)
-		for _, item := range a.Users {
-			for _, u := range cs.users {
-				if equal(u.UUID, item) {
-					result.Users = append(result.Users, u.Email)
-					break
-				}
-			}
-		}
-	}
-
-	if len(a.Groups) >= 1 {
-		result.Groups = make([]string, 0)
-
-		for _, item := range a.Groups {
-			for _, g := range cs.groups {
-				if equal(g.UUID, item) {
-					result.Groups = append(result.Groups, g.Name)
-					break
-				}
-			}
-		}
-	}
-
-	if len(a.Runners) >= 1 {
-		result.Runner = a.Runners[0]
-	}
-
-	if len(a.Secrets) >= 1 {
-		result.Secrets = make([]string, 0)
-		for _, item := range a.Secrets {
-			result.Secrets = append(result.Secrets, item)
 		}
 	}
 
 	if len(a.Starters) >= 1 {
-		result.Starters = make([]entities.StarterModel, 0)
-		for _, item := range a.Starters {
+		result.Tasks = make([]entities.TaskModel, 0)
+		for _, t := range a.Starters {
 			result.Starters = append(result.Starters, entities.StarterModel{
-				Name:    item.Name,
-				Command: item.Command,
+				Name:    t.Name,
+				Command: t.Command,
 			})
 		}
 	}
 
-	if len(a.Variables) >= 1 {
-		elements := make(map[string]attr.Value)
-		for key, val := range a.Variables {
-			elements[key] = types.StringValue(val)
-		}
-
-		mapValue, d := types.MapValue(types.StringType, elements)
-		if e := diagnosticsToErrors(d); e != nil {
-			err = errors.Join(err, e)
-		}
-
-		result.Variables = mapValue
-	}
-
-	if len(a.Integrations) >= 1 {
-		result.Integrations = make([]string, 0)
-		for _, item := range a.Integrations {
-			result.Integrations = append(result.Integrations, item)
+	for _, t := range a.Users {
+		for _, u := range cs.users {
+			if equal(u.UUID, t) {
+				usersList = append(usersList, u.Email)
+				break
+			}
 		}
 	}
+
+	for _, t := range a.Groups {
+		for _, g := range cs.groups {
+			if equal(g.UUID, t) {
+				groupList = append(groupList, g.Name)
+				break
+			}
+		}
+	}
+
+	result.Links = toListStringType(a.Links, err)
+
+	result.Variables = toMapType(a.Variables, err)
+
+	result.Users = toListStringType(usersList, err)
+
+	result.Groups = toListStringType(groupList, err)
+
+	result.Secrets = toListStringType(a.Secrets, err)
+
+	result.Integrations = toListStringType(a.Integrations, err)
 
 	return result, err
 }
@@ -318,7 +301,8 @@ func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) (*entities
 
 		var entity *entities.AgentModel
 		for _, a := range cs.agents {
-			if equal(a.Uuid, id.ValueString()) || equal(a.Name, name) {
+			if equal(a.Uuid, id.ValueString()) ||
+				equal(a.Name, name.ValueString()) {
 				entity, err = fromAgent(a, cs)
 				break
 			}
@@ -330,11 +314,11 @@ func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) (*entities
 	return e, fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }
 
-func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {
+func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error {
 	if e != nil {
 		cs, err := c.state()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		id := e.Id.ValueString()
@@ -343,28 +327,30 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 
 		data, err := toAgent(e, cs)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		body, err := toJson(data)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		var r *agent
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		return fromAgent(r, cs)
+		e, err = fromAgent(r, cs)
+
+		return err
 	}
-	return e, fmt.Errorf("param entity (*entities.AgentModel) is nil")
+	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }
 
 func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {

@@ -3,31 +3,17 @@ package clients
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
-)
 
-func structName(i any) string {
-	t := reflect.TypeOf(i)
-	return t.Name()
-}
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+)
 
 func closeBody(b io.ReadCloser) {
 	_ = b.Close()
-}
-
-func stringList(str string) []string {
-	const (
-		sep   = ","
-		pre   = "["
-		suf   = "]"
-		empty = ""
-	)
-
-	str = strings.ReplaceAll(str, pre, empty)
-	return strings.Split(strings.ReplaceAll(str, suf, empty), sep)
 }
 
 func toPathYaml(pre, suf string) string {
@@ -81,4 +67,52 @@ func format(l string, i ...any) string {
 
 func equal(str, term string) bool {
 	return strings.EqualFold(str, term)
+}
+
+func toListStringType(items []string, err error) types.List {
+	const (
+		errorLayout = "[%s] %s. Error: %s"
+	)
+
+	var elements []attr.Value
+	for _, item := range items {
+		elements = append(elements, types.StringValue(item))
+	}
+
+	result, diags := types.ListValue(types.StringType, elements)
+	if diags.HasError() {
+		for _, d := range diags {
+			detail := d.Detail()
+			summary := d.Summary()
+			severity := d.Severity()
+			err = errors.Join(err, eformat(errorLayout, severity, summary, detail))
+		}
+	}
+
+	return result
+}
+
+func toMapType(items map[string]string, err error) types.Map {
+	const (
+		errorLayout = "[%s] %s. Error: %s"
+	)
+
+	elements := make(map[string]attr.Value)
+	for key, value := range items {
+		if len(key) >= 1 {
+			elements[key] = types.StringValue(value)
+		}
+	}
+
+	result, diags := types.MapValue(types.StringType, elements)
+	if diags.HasError() {
+		for _, d := range diags {
+			detail := d.Detail()
+			summary := d.Summary()
+			severity := d.Severity()
+			err = errors.Join(err, eformat(errorLayout, severity, summary, detail))
+		}
+	}
+
+	return result
 }
