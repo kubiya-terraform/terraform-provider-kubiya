@@ -23,34 +23,31 @@ type ConfigModel struct {
 }
 
 func IntegrationSchema() schema.Schema {
+	const (
+		defaultAuthType        = ""
+		defaultIntegrationType = "aws"
+	)
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			// Computed
 			"id": schema.StringAttribute{
 				Computed:            true,
 				Description:         "The ID of the integration",
 				MarkdownDescription: "The unique identifier of the integration",
 			},
-			"name": schema.StringAttribute{
-				Required:            true,
-				Description:         "The name of the integration",
-				MarkdownDescription: "The name of the integration",
-			},
-			"integration_type": schema.StringAttribute{
-				Required:            true,
-				Description:         "The type of the integration",
-				MarkdownDescription: "The type of the integration (e.g., aws, aws_organization, gcp, azure, jira, confluence)",
-			},
-			"auth_type": schema.StringAttribute{
-				Optional:            true,
-				Computed:            true,
-				Default:             stringdefault.StaticString(""),
-				Description:         "The authentication type of the integration",
-				MarkdownDescription: "The authentication type of the integration (e.g., per_user, global)",
-			},
+
+			// Optional
 			"description": schema.StringAttribute{
 				Optional:            true,
 				Description:         "The description of the integration",
 				MarkdownDescription: "A description of the integration",
+			},
+
+			// Required
+			"name": schema.StringAttribute{
+				Required:            true,
+				Description:         "The name of the integration",
+				MarkdownDescription: "The name of the integration",
 			},
 			"configs": schema.ListAttribute{
 				Required: true,
@@ -63,6 +60,22 @@ func IntegrationSchema() schema.Schema {
 						},
 					},
 				},
+			},
+
+			// Required with default value
+			"auth_type": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(defaultAuthType),
+				Description:         "The authentication type of the integration",
+				MarkdownDescription: "The authentication type of the integration (e.g., per_user, global)",
+			},
+			"integration_type": schema.StringAttribute{
+				Optional:            true,
+				Computed:            true,
+				Default:             stringdefault.StaticString(defaultIntegrationType),
+				Description:         "The type of the integration",
+				MarkdownDescription: "The type of the integration (e.g., aws, aws_organization, gcp, azure, jira, confluence)",
 			},
 		},
 	}

@@ -277,6 +277,30 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	return result, err
 }
 
+func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) error {
+	if e != nil {
+		cs, err := c.state()
+		if err != nil {
+			return err
+		}
+
+		id := e.Id
+		name := e.Name
+
+		for _, a := range cs.agents {
+			if equal(a.Uuid, id.ValueString()) ||
+				equal(a.Name, name.ValueString()) {
+				e, err = fromAgent(a, cs)
+				break
+			}
+		}
+
+		return err
+	}
+
+	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
+}
+
 func (c *Client) DeleteAgent(ctx context.Context, e *entities.AgentModel) error {
 	if e != nil {
 		id := e.Id.ValueString()
@@ -287,31 +311,6 @@ func (c *Client) DeleteAgent(ctx context.Context, e *entities.AgentModel) error 
 	}
 
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
-}
-
-func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {
-	if e != nil {
-		cs, err := c.state()
-		if err != nil {
-			return nil, err
-		}
-
-		id := e.Id
-		name := e.Name
-
-		var entity *entities.AgentModel
-		for _, a := range cs.agents {
-			if equal(a.Uuid, id.ValueString()) ||
-				equal(a.Name, name.ValueString()) {
-				entity, err = fromAgent(a, cs)
-				break
-			}
-		}
-
-		return entity, err
-	}
-
-	return e, fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }
 
 func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error {
