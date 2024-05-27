@@ -6,32 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func structName(i any) string {
-	t := reflect.TypeOf(i)
-	return t.Name()
-}
-
 func closeBody(b io.ReadCloser) {
 	_ = b.Close()
-}
-
-func stringList(str string) []string {
-	const (
-		sep   = ","
-		pre   = "["
-		suf   = "]"
-		empty = ""
-	)
-
-	str = strings.ReplaceAll(str, pre, empty)
-	return strings.Split(strings.ReplaceAll(str, suf, empty), sep)
 }
 
 func toPathYaml(pre, suf string) string {
