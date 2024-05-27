@@ -39,13 +39,9 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 			"webhook not found",
 			fmt.Sprintf("webhook by name: %s not found. Error: ", state.Name)+err.Error(),
 		)
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -123,13 +119,10 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 			"failed to create webhook",
 			"failed to create webhook. Error: "+err.Error(),
 		)
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

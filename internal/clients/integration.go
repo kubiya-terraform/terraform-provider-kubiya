@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -53,7 +52,12 @@ func toIntegrationApi(e *entities.IntegrationModel) (*integrationApi, error) {
 		Description: e.Description.ValueString(),
 	}
 
+	hasDefault := false
+
 	for _, c := range e.Configs {
+		if !hasDefault {
+			hasDefault = c.IsDefault.ValueBool()
+		}
 		config := configApi{
 			Name:           c.Name.ValueString(),
 			IsDefault:      c.IsDefault.ValueBool(),
@@ -68,6 +72,10 @@ func toIntegrationApi(e *entities.IntegrationModel) (*integrationApi, error) {
 		}
 
 		resp.Configs = append(resp.Configs, config)
+	}
+
+	if !hasDefault || len(resp.Configs) <= 0 {
+		return resp, fmt.Errorf("empty configs or integration has no default config")
 	}
 
 	return resp, nil
@@ -115,13 +123,13 @@ func (c *Client) ReadIntegration(ctx context.Context, e *entities.IntegrationMod
 			return err
 		}
 
-		var r *integrationApi
-		err = json.NewDecoder(resp).Decode(r)
+		var r integrationApi
+		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
 			return err
 		}
 
-		e, err = toIntegrationModel(r)
+		e, err = toIntegrationModel(&r)
 
 		return err
 	}
@@ -161,13 +169,13 @@ func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationM
 			return err
 		}
 
-		var r *integrationApi
-		err = json.NewDecoder(resp).Decode(r)
+		var r integrationApi
+		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
 			return err
 		}
 
-		e, err = toIntegrationModel(r)
+		e, err = toIntegrationModel(&r)
 
 		return err
 	}
@@ -179,7 +187,6 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 	if e != nil {
 		data, err := toIntegrationApi(e)
 		if err != nil {
-			log.Printf("[226] [toIntegrationApi(e)] Error: %s\n", err.Error())
 			return nil, err
 		}
 
@@ -195,13 +202,13 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 			return nil, err
 		}
 
-		var r *integrationApi
+		var r integrationApi
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
 			return nil, err
 		}
 
-		entity, err := toIntegrationModel(r)
+		entity, err := toIntegrationModel(&r)
 		if err != nil {
 			return nil, err
 		}
