@@ -203,9 +203,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		Model:        types.StringValue(a.LlmModel),
 		Description:  types.StringValue(a.Description),
 		Instructions: types.StringValue(a.AiInstructions),
-
-		//Tasks:    make([]entities.TaskModel, 0),
-		//Starters: make([]entities.StarterModel, 0),
 	}
 
 	usersList := make([]string, 0)
@@ -265,18 +262,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 	}
 
-	//for _, t := range a.Starters {
-	//	result.Starters = make([]entities.StarterModel, 0)
-	//	result.Starters = append(result.Starters, entities.StarterModel{
-	//		Name:    t.Name,
-	//		Command: t.Command,
-	//	})
-	//}
-
-	//if m := toMapType(a.Variables, err); err == nil {
-	//	result.Variables = m
-	//}
-
 	result.Links = toListStringType(a.Links, err)
 
 	result.Variables = toMapType(a.Variables, err)
@@ -288,82 +273,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Secrets = toListStringType(a.Secrets, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
-
-	//if len(a.Tasks) >= 1 {
-	//	result.Tasks = make([]entities.TaskModel, 0)
-	//	for _, item := range a.Tasks {
-	//		result.Tasks = append(result.Tasks, entities.TaskModel{
-	//			Name:        item.Name,
-	//			Prompt:      item.Prompt,
-	//			Description: item.Description,
-	//		})
-	//	}
-	//}
-	//
-	//if len(a.Links) >= 1 {
-	//	result.Links = make([]string, 0)
-	//	result.Links = append(result.Links, item)
-	//}
-	//
-	//if len(a.Users) >= 1 {
-	//	result.Users = make([]string, 0)
-	//	for _, item := range a.Users {
-	//		for _, u := range cs.users {
-	//			if equal(u.UUID, item) {
-	//				result.Users = append(result.Users, u.Email)
-	//				break
-	//			}
-	//		}
-	//	}
-	//}
-	//
-	//if len(a.Groups) >= 1 {
-	//	result.Groups = make([]string, 0)
-	//
-	//	for _, item := range a.Groups {
-	//		for _, g := range cs.groups {
-	//			if equal(g.UUID, item) {
-	//				result.Groups = append(result.Groups, g.Name)
-	//				break
-	//			}
-	//		}
-	//	}
-	//}
-	//
-	//if len(a.Secrets) >= 1 {
-	//	result.Secrets = make([]string, 0)
-	//	for _, item := range a.Secrets {
-	//		result.Secrets = append(result.Secrets, item)
-	//	}
-	//}
-	//
-	//if len(a.Starters) >= 1 {
-	//	result.Starters = make([]entities.StarterModel, 0)
-	//	for _, item := range a.Starters {
-	//		result.Starters = append(result.Starters, entities.StarterModel{
-	//			Name:    item.Name,
-	//			Command: item.Command,
-	//		})
-	//	}
-	//}
-	//
-	//if len(a.Variables) >= 1 {
-	//	variables := map[string]string{}
-	//	result.Variables = &map[string]string{}
-	//	for key, value := range a.Variables {
-	//		variables[key] = value
-	//		//result.Variables[key] = value
-	//	}
-	//
-	//	result.Variables = &variables
-	//}
-	//
-	//if len(a.Integrations) >= 1 {
-	//	result.Integrations = make([]string, 0)
-	//	for _, item := range a.Integrations {
-	//		result.Integrations = append(result.Integrations, item)
-	//	}
-	//}
 
 	return result, err
 }
