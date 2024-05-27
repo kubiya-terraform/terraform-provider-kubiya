@@ -116,13 +116,3 @@ func toMapType(items map[string]string, err error) types.Map {
 
 	return result
 }
-
-func fromList(items types.List) []string {
-	var result []string
-	for _, item := range items.Elements() {
-		str := item.String()
-		result = append(result, strings.ReplaceAll(str, "\"", ""))
-	}
-
-	return result
-}
