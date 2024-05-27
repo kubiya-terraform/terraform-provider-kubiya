@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
@@ -34,8 +33,6 @@ func (r *integrationResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	log.Printf("[Resource] [Integration] [Read] - State: %v", state)
-
 	if err := r.client.ReadIntegration(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
@@ -43,7 +40,7 @@ func (r *integrationResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *integrationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -59,8 +56,6 @@ func (r *integrationResource) Delete(ctx context.Context, req resource.DeleteReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	log.Printf("[Resource] [Integration] [Delete] - State: %v", state)
 
 	if err := r.client.DeleteIntegration(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
@@ -105,24 +100,21 @@ func (r *integrationResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	updatedState := state
+	updatedState.Configs = plan.Configs
 
-	if !plan.Name.IsNull() {
+	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
 		updatedState.Name = plan.Name
 	}
 
-	if !plan.Type.IsNull() {
+	if !plan.Type.IsNull() && !plan.Type.IsUnknown() {
 		updatedState.Type = plan.Type
 	}
 
-	if len(plan.Configs) >= 1 {
-		updatedState.Configs = plan.Configs
-	}
-
-	if !plan.AuthType.IsNull() {
+	if !plan.AuthType.IsNull() && !plan.AuthType.IsUnknown() {
 		updatedState.AuthType = plan.AuthType
 	}
 
-	if !plan.Description.IsNull() {
+	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		updatedState.Description = plan.Description
 	}
 

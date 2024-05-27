@@ -124,7 +124,6 @@ func AgentSchema() schema.Schema {
 			},
 			"tasks": schema.ListAttribute{
 				Optional: true,
-				//Computed: true,
 				ElementType: types.ObjectType{
 					AttrTypes: map[string]attr.Type{
 						"name":        types.StringType,
@@ -158,7 +157,6 @@ func AgentSchema() schema.Schema {
 			},
 			"starters": schema.ListAttribute{
 				Optional: true,
-				//Computed: true,
 				ElementType: types.ObjectType{
 					AttrTypes: map[string]attr.Type{
 						"name":    types.StringType,
