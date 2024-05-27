@@ -3,8 +3,6 @@ package entities
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -23,23 +21,23 @@ type AgentModel struct {
 	CreatedAt types.String `tfsdk:"created_at"`
 
 	// Required with default value
-	Image string `tfsdk:"image"`
-	Model string `tfsdk:"model"`
+	Image types.String `tfsdk:"image"`
+	Model types.String `tfsdk:"model"`
 
 	// Required
-	Name         string `tfsdk:"name"`
-	Runner       string `tfsdk:"runner"`
-	Description  string `tfsdk:"description"`
-	Instructions string `tfsdk:"instructions"`
+	Name         types.String `tfsdk:"name"`
+	Runner       types.String `tfsdk:"runner"`
+	Description  types.String `tfsdk:"description"`
+	Instructions types.String `tfsdk:"instructions"`
 
 	// Optional
-	Links        []string       `tfsdk:"links"`
+	Links        types.List     `tfsdk:"links"`
 	Tasks        []TaskModel    `tfsdk:"tasks"`
-	Users        []string       `tfsdk:"users"`
-	Groups       []string       `tfsdk:"groups"`
-	Secrets      []string       `tfsdk:"secrets"`
+	Users        types.List     `tfsdk:"users"`
+	Groups       types.List     `tfsdk:"groups"`
+	Secrets      types.List     `tfsdk:"secrets"`
 	Starters     []StarterModel `tfsdk:"starters"`
-	Integrations []string       `tfsdk:"integrations"`
+	Integrations types.List     `tfsdk:"integrations"`
 	Variables    types.Map      `tfsdk:"environment_variables"`
 }
 
@@ -123,7 +121,6 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of links associated with the agent",
 				MarkdownDescription: "An array of links related to the agent",
-				Default:             listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"tasks": schema.ListAttribute{
 				Optional: true,
@@ -137,7 +134,6 @@ func AgentSchema() schema.Schema {
 				},
 				Description:         "A list of tasks associated with the agent",
 				MarkdownDescription: "An array of tasks related to the agent",
-				//Default:             listdefault.StaticValue(types.ListNull(types.ObjectType{})),
 			},
 			"users": schema.ListAttribute{
 				Optional:            true,
@@ -145,7 +141,6 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of users that have access to this agent",
 				MarkdownDescription: "An array of users who have access to this agent",
-				Default:             listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"groups": schema.ListAttribute{
 				Optional:            true,
@@ -153,7 +148,6 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of groups that have access to this agent",
 				MarkdownDescription: "An array of groups who have access to this agent",
-				Default:             listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"secrets": schema.ListAttribute{
 				Optional:            true,
@@ -161,7 +155,6 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of secrets associated with the agent",
 				MarkdownDescription: "An array of secrets related to the agent",
-				Default:             listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"starters": schema.ListAttribute{
 				Optional: true,
@@ -174,7 +167,6 @@ func AgentSchema() schema.Schema {
 				},
 				Description:         "A list of starters associated with the agent",
 				MarkdownDescription: "An array of starters related to the agent",
-				//Default:             listdefault.StaticValue(types.ListNull(types.ObjectType{})),
 			},
 			"integrations": schema.ListAttribute{
 				Optional:            true,
@@ -182,15 +174,13 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of integrations associated with the agent",
 				MarkdownDescription: "An array of integrations related to the agent",
-				Default:             listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"environment_variables": schema.MapAttribute{
-				Optional:            true,
 				Computed:            true,
+				Optional:            true,
 				ElementType:         types.StringType,
 				Description:         "A map of environment variables for the agent",
 				MarkdownDescription: "A map of key-value pairs representing environment variables for the agent",
-				Default:             mapdefault.StaticValue(types.MapNull(types.StringType)),
 			},
 		},
 	}
