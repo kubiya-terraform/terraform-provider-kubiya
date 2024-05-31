@@ -87,15 +87,6 @@ func AgentSchema() schema.Schema {
 			"model": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
-				Validators: []validator.String{
-					onOfValidator("model", []string{
-						"azure/gpt-4",
-						"azure/gpt-4-32k",
-						"azure/gpt-3.5-turbo",
-						"azure/gpt3-5-turbo-16k",
-						"azure/gpt-4-turbo-preview",
-					}),
-				},
 				Description:         "The LLM model that the agent will run",
 				Default:             stringdefault.StaticString(defaultModel),
 				MarkdownDescription: "The LLM model used by the agent for its operations",
