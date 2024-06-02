@@ -93,7 +93,7 @@ func AgentSchema() schema.Schema {
 						"azure/gpt-4o",
 						"azure/gpt-4-turbo-preview",
 						"azure/gpt-4-32k",
-						"azure/gpt-3.5-turbo"
+						"azure/gpt-3.5-turbo",
 					}),
 				},
 				Description:         "The LLM model that the agent will run",
