@@ -44,6 +44,7 @@ type state struct {
 	users        []*user
 	agents       []*agent
 	groups       []*group
+	models       []string
 	runners      []*runner
 	secrets      []*secret
 	webhooks     []*webhook

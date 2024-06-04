@@ -4,7 +4,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -85,17 +84,8 @@ func AgentSchema() schema.Schema {
 				Default:             stringdefault.StaticString(defaultImage),
 			},
 			"model": schema.StringAttribute{
-				Optional: true,
-				Computed: true,
-				Validators: []validator.String{
-					onOfValidator("model", []string{
-						"azure/gpt-4",
-						"azure/gpt-4o",
-						"azure/gpt-4-turbo-preview",
-						"azure/gpt-4-32k",
-						"azure/gpt-3.5-turbo",
-					}),
-				},
+				Optional:            true,
+				Computed:            true,
 				Description:         "The LLM model that the agent will run",
 				Default:             stringdefault.StaticString(defaultModel),
 				MarkdownDescription: "The LLM model used by the agent for its operations",
