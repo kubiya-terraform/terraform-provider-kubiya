@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 )
 
 type Client struct {
@@ -65,6 +66,12 @@ func (c *Client) state() (*state, error) {
 		currentState.groups = append(make([]*group, 0), groups...)
 	}
 
+	if models, e := c.models(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.models = append(make([]string, 0), models...)
+	}
+
 	if runners, e := c.runners(); e != nil {
 		err = errors.Join(err, e)
 	} else {
@@ -111,6 +118,25 @@ func (c *Client) users() ([]*user, error) {
 	return result, err
 }
 
+func (c *Client) agents() ([]*agent, error) {
+	const (
+		path = "/api/v1/agents"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*agent
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
 func (c *Client) groups() ([]*group, error) {
 	const (
 		path = "/api/v1/manage/groups"
@@ -130,21 +156,35 @@ func (c *Client) groups() ([]*group, error) {
 	return result, err
 }
 
-func (c *Client) agents() ([]*agent, error) {
+func (c *Client) models() ([]string, error) {
 	const (
-		path = "/api/v1/agents"
+		sep  = ","
+		path = "/api/v1/featureflags"
+		body = `["supported_llm_models"]`
 	)
 
 	uri := c.uri(path)
 	ctx := context.Background()
 
-	resp, err := c.read(ctx, uri)
+	resp, err := c.create(ctx, uri,
+		strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 
-	var result []*agent
-	err = json.NewDecoder(resp).Decode(&result)
+	tmp := &struct {
+		Models string `json:"supported_llm_models"`
+	}{}
+
+	if err = json.NewDecoder(resp).Decode(tmp); err != nil {
+		return nil, err
+	}
+
+	var result []string
+
+	for _, item := range strings.Split(tmp.Models, sep) {
+		result = append(result, strings.TrimSpace(item))
+	}
 
 	return result, err
 }

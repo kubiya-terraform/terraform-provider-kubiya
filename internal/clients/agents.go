@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -93,7 +94,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 	if !validRunner {
 		item := a.Runner
-		err = errors.Join(err, fmt.Errorf("runner \"%s\" don't exist", item))
+		err = errors.Join(err, eformat("runner \"%s\" don't exist", item))
 	}
 
 	for _, v := range a.Tasks {
@@ -101,6 +102,13 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			Name:        v.Name,
 			Prompt:      v.Prompt,
 			Description: v.Description,
+		})
+	}
+
+	for _, v := range a.Starters {
+		result.Starters = append(result.Starters, starter{
+			Name:    v.Name,
+			Command: v.Command,
 		})
 	}
 
@@ -163,13 +171,6 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		}
 	}
 
-	for _, v := range a.Starters {
-		result.Starters = append(result.Starters, starter{
-			Name:    v.Name,
-			Command: v.Command,
-		})
-	}
-
 	for _, v := range a.Integrations.Elements() {
 		if !v.IsNull() && !v.IsUnknown() {
 			found := false
@@ -189,6 +190,12 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 	for key, value := range a.Variables.Elements() {
 		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
+	}
+
+	if valid := slices.Contains(cs.models, result.LlmModel); !valid {
+		model := result.LlmModel
+		models := strings.Join(cs.models, ",")
+		err = errors.Join(err, eformat("LLM Model \"%s\" not valid. [%s]", model, models))
 	}
 
 	return result, err
