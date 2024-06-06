@@ -47,10 +47,13 @@ func (c *Client) auth(req *http.Request) *http.Request {
 	const (
 		authLayout = "UserKey %s"
 		authHeader = "Authorization"
+		source     = "source"
+		terraform  = "terraform"
 	)
 
 	if req != nil {
 		req.Header.Set(authHeader, format(authLayout, c.userKey))
+		req.Header.Set(source, terraform)
 	}
 
 	return req
