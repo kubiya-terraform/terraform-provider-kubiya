@@ -1,60 +1,77 @@
-# Visit https://goreleaser.com for documentation on how to customize this
-# behavior.
+# This is an example-real .goreleaser.yml file with some sensible defaults.
+# Make sure to check the documentation at https://goreleaser.com
+
 before:
   hooks:
-    # this is just an example and not a requirement for provider building/publishing
     - go mod tidy
+
 builds:
-  - env:
-      # goreleaser does not work with CGO, it could also complicate
-      # usage by users in CI/CD systems like Terraform Cloud where
-      # they are unable to install libraries.
-      - CGO_ENABLED=0
+  - targets:
+      - linux_amd64
+      - linux_386
+      - linux_arm64
+      - linux_arm_v7
+      - darwin_amd64
+      - darwin_arm64
+      - windows_amd64
+      - windows_386
+      - freebsd_amd64
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath
     ldflags:
       - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
-    goos:
-      - freebsd
-      - windows
-      - linux
-      - darwin
-    goarch:
-      - amd64
-      - '386'
-      - arm
-      - arm64
+    binary: '{{ .ProjectName }}_v{{ .Version }}'
     ignore:
       - goos: darwin
         goarch: '386'
-    binary: '{{ .ProjectName }}_v{{ .Version }}'
+
 archives:
   - format: zip
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+
 checksum:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
   name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
   algorithm: sha256
+
 signs:
   - artifacts: checksum
     args:
-      # if you are using this in a GitHub action or some other automated pipeline, you 
-      # need to pass the batch flag to indicate its not interactive.
       - "--batch"
       - "--local-user"
-      - "{{ .Env.GPG_FINGERPRINT }}" # set this environment variable for your signing key
+      - "{{ .Env.GPG_FINGERPRINT }}"
       - "--output"
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
+
 release:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
       name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
-  # If you want to manually examine the release before its live, uncomment this line:
+  # Uncomment this line if you want to manually examine the release before it's live:
   # draft: true
+
 changelog:
   skip: true
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+release:
+  name_template: 'v{{ .Version }}'
+  footer: |
+    * * *
+
+    <a href="https://goreleaser.com"><img src="https://raw.githubusercontent.com/goreleaser/artwork/master/opencollective-header.png" with="100%" alt="GoReleaser logo"></a>
+
+    Find example-reals and commented usage of all options in our [website](https://goreleaser.com/intro/).
+    Want to help? You can [sponsor](https://goreleaser.com/sponsors/),get a [Pro License](https://goreleaser.com/pro) or [contribute](https://goreleaser.com/contributing).
+    Also, feel free to reach out on [Discord](https://discord.gg/RGEBtg8vQ6) and [Twitter](https://twitter.com/goreleaser)!
+
+# modelines, feel free to remove those if you don't want/use them:
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
