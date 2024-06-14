@@ -230,8 +230,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		result.Runner = types.StringValue(a.Runners[0])
 	}
 
+	result.Tasks = make([]entities.TaskModel, 0)
 	if len(a.Tasks) >= 1 {
-		result.Tasks = make([]entities.TaskModel, 0)
 		for _, t := range a.Tasks {
 			result.Tasks = append(result.Tasks, entities.TaskModel{
 				Name:        t.Name,
@@ -241,8 +241,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 	}
 
+	result.Starters = make([]entities.StarterModel, 0)
 	if len(a.Starters) >= 1 {
-		result.Tasks = make([]entities.TaskModel, 0)
 		for _, t := range a.Starters {
 			result.Starters = append(result.Starters, entities.StarterModel{
 				Name:    t.Name,
