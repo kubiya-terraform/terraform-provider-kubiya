@@ -281,8 +281,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 
 	result.Integrations = toListStringType(a.Integrations, err)
 
-	println(fmt.Sprintf("Returned agent from server after manipulation to provider object: %+v", result))
-
 	return result, err
 }
 
@@ -368,12 +366,10 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 			return nil, err
 		}
 
-		println(fmt.Sprintf("Input agent is: %+v", e))
 		data, err := toAgent(e, cs)
 		if err != nil {
 			return nil, err
 		}
-		println(fmt.Sprintf("Agent after manipulation: %+v", data))
 
 		body, err := toJson(data)
 		if err != nil {
@@ -392,7 +388,6 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 		if err != nil {
 			return nil, err
 		}
-		println(fmt.Sprintf("Agent returned from server: %+v", r))
 
 		return fromAgent(r, cs)
 	}
