@@ -174,7 +174,9 @@ func (c *Client) models() ([]string, error) {
 
 	tmp := &struct {
 		Models string `json:"supported_llm_models"`
-	}{}
+	}{
+		Models: body,
+	}
 
 	if err = json.NewDecoder(resp).Decode(tmp); err != nil {
 		return nil, err
