@@ -326,7 +326,6 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
-		println(fmt.Sprintf("the state is: [%+v]", cs))
 
 		id := e.Id.ValueString()
 		e.Owner = types.StringNull()
@@ -336,7 +335,6 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
-		println(fmt.Sprintf("data is: %+v", data))
 
 		body, err := toJson(data)
 		if err != nil {
@@ -353,10 +351,8 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
-		println(fmt.Sprintf("the response from the server for updating the agent is: [%+v]", r))
 
 		e, err = fromAgent(r, cs)
-		println(fmt.Sprintf("the output AgentModel is: [%+v] and the error is: [%v]", e, err))
 		return err
 	}
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
