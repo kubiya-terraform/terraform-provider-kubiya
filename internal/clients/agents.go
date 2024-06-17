@@ -230,8 +230,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		result.Runner = types.StringValue(a.Runners[0])
 	}
 
-	result.Tasks = make([]entities.TaskModel, 0)
 	if len(a.Tasks) >= 1 {
+		result.Tasks = make([]entities.TaskModel, 0)
 		for _, t := range a.Tasks {
 			result.Tasks = append(result.Tasks, entities.TaskModel{
 				Name:        t.Name,
@@ -241,8 +241,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 	}
 
-	result.Starters = make([]entities.StarterModel, 0)
 	if len(a.Starters) >= 1 {
+		result.Starters = make([]entities.StarterModel, 0)
 		for _, t := range a.Starters {
 			result.Starters = append(result.Starters, entities.StarterModel{
 				Name:    t.Name,
@@ -326,6 +326,7 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
+		println(fmt.Sprintf("the state is: [%+v]", cs))
 
 		id := e.Id.ValueString()
 		e.Owner = types.StringNull()
@@ -335,6 +336,7 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
+		println(fmt.Sprintf("data is: %+v", data))
 
 		body, err := toJson(data)
 		if err != nil {
@@ -351,9 +353,10 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		if err != nil {
 			return err
 		}
+		println(fmt.Sprintf("the response from the server for updating the agent is: [%+v]", r))
 
 		e, err = fromAgent(r, cs)
-
+		println(fmt.Sprintf("the output AgentModel is: [%+v] and the error is: [%v]", e, err))
 		return err
 	}
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
