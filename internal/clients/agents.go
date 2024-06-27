@@ -26,6 +26,7 @@ type agent struct {
 	Image string `json:"image,omitempty"`
 
 	Links        []string  `json:"links"`
+	Tools        []string  `json:"tools"`
 	Tasks        []task    `json:"tasks"`
 	Secrets      []string  `json:"secrets"`
 	Starters     []starter `json:"starters"`
@@ -75,6 +76,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Owners: make([]string, 0),
 
 		Links:        make([]string, 0),
+		Tools:        make([]string, 0),
 		Users:        make([]string, 0),
 		Groups:       make([]string, 0),
 		Secrets:      make([]string, 0),
@@ -97,6 +99,10 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, eformat("runner \"%s\" don't exist", item))
 	}
 
+	if len(a.Tools.Elements()) >= 6 {
+		err = errors.Join(err, eformat("tools field can have no more than 5 elements"))
+	}
+
 	for _, v := range a.Tasks {
 		result.Tasks = append(result.Tasks, task{
 			Name:        v.Name,
@@ -116,6 +122,13 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		if !v.IsNull() && !v.IsUnknown() {
 			str := v.String()
 			result.Links = append(result.Links, strings.ReplaceAll(str, "\"", ""))
+		}
+	}
+
+	for _, v := range a.Tools.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			str := v.String()
+			result.Tools = append(result.Tools, strings.ReplaceAll(str, "\"", ""))
 		}
 	}
 
@@ -268,6 +281,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 			}
 		}
 	}
+
+	result.Tools = toListStringType(a.Tools, err)
 
 	result.Links = toListStringType(a.Links, err)
 
