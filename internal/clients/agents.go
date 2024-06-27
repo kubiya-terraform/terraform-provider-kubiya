@@ -99,8 +99,8 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, eformat("runner \"%s\" don't exist", item))
 	}
 
-	if size := len(a.Tools.Elements()); size >= 6 {
-		err = errors.Join(err, eformat("tool must have maximum 5 items. you have \"%d\"", size))
+	if len(a.Tools.Elements()) >= 6 {
+		err = errors.Join(err, eformat("tools field can have no more than 5 elements"))
 	}
 
 	for _, v := range a.Tasks {
