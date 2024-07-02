@@ -88,18 +88,21 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	var plan entities.AgentModel
 	var state entities.AgentModel
 
-	diags := req.Plan.Get(ctx, &plan)
-	resp.Diagnostics.Append(diags...)
-
-	diags = req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	updatedState := state
-	updatedState.Tasks = plan.Tasks
-	updatedState.Starters = plan.Starters
+
+	if plan.Tasks != nil {
+		updatedState.Tasks = plan.Tasks
+	}
+
+	if plan.Starters != nil {
+		updatedState.Starters = plan.Starters
+	}
 
 	if !plan.Id.IsNull() && !plan.Id.IsUnknown() {
 		updatedState.Id = plan.Id

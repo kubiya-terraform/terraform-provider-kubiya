@@ -51,49 +51,55 @@ func (c *Client) state() (*state, error) {
 	if users, e := c.users(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.users = append(make([]*user, 0), users...)
+		currentState.userList = append(make([]*user, 0), users...)
 	}
 
 	if agents, e := c.agents(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.agents = append(make([]*agent, 0), agents...)
+		currentState.agentList = append(make([]*agent, 0), agents...)
 	}
 
 	if groups, e := c.groups(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.groups = append(make([]*group, 0), groups...)
+		currentState.groupList = append(make([]*group, 0), groups...)
 	}
 
 	if models, e := c.models(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.models = append(make([]string, 0), models...)
+		currentState.modelList = append(make([]string, 0), models...)
 	}
 
 	if runners, e := c.runners(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.runners = append(make([]*runner, 0), runners...)
+		currentState.runnerList = append(make([]*runner, 0), runners...)
 	}
 
 	if secrets, e := c.secrets(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.secrets = append(make([]*secret, 0), secrets...)
+		currentState.secretList = append(make([]*secret, 0), secrets...)
 	}
 
 	if webhooks, e := c.webhooks(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.webhooks = append(make([]*webhook, 0), webhooks...)
+		currentState.webhookList = append(make([]*webhook, 0), webhooks...)
 	}
 
 	if integrations, e := c.integrations(); e != nil {
 		err = errors.Join(err, e)
 	} else {
-		currentState.integrations = append(make([]*integration, 0), integrations...)
+		currentState.integrationList = append(make([]*integration, 0), integrations...)
+	}
+
+	if knowledgeList, e := c.knowledge(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.knowledgeList = append(make([]*knowledge, 0), knowledgeList...)
 	}
 
 	return &currentState, err
@@ -241,6 +247,25 @@ func (c *Client) webhooks() ([]*webhook, error) {
 	}
 
 	var result []*webhook
+	err = json.NewDecoder(resp).Decode(&result)
+
+	return result, err
+}
+
+func (c *Client) knowledge() ([]*knowledge, error) {
+	const (
+		path = "/api/v1/knowledge"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*knowledge
 	err = json.NewDecoder(resp).Decode(&result)
 
 	return result, err
