@@ -32,11 +32,11 @@ type AgentModel struct {
 	// Optional
 	Links        types.List     `tfsdk:"links"`
 	Tasks        []TaskModel    `tfsdk:"tasks"`
-	Tools        types.List     `tfsdk:"tools"`
 	Users        types.List     `tfsdk:"users"`
 	Groups       types.List     `tfsdk:"groups"`
 	Secrets      types.List     `tfsdk:"secrets"`
 	Starters     []StarterModel `tfsdk:"starters"`
+	Tools        types.List     `tfsdk:"tool_sources"`
 	Integrations types.List     `tfsdk:"integrations"`
 	Variables    types.Map      `tfsdk:"environment_variables"`
 }
@@ -129,12 +129,12 @@ func AgentSchema() schema.Schema {
 				Description:         "A list of tasks associated with the agent",
 				MarkdownDescription: "An array of tasks related to the agent",
 			},
-			"tools": schema.ListAttribute{
+			"tool_sources": schema.ListAttribute{
 				Optional:            true,
 				Computed:            true,
 				ElementType:         types.StringType,
-				Description:         "A list of links associated with the agent",
-				MarkdownDescription: "An array of links related to the agent",
+				Description:         "A list of tools to be consumed with agents",
+				MarkdownDescription: "An array of URL's to pull tools from",
 			},
 			"users": schema.ListAttribute{
 				Optional:            true,
