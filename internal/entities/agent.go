@@ -32,7 +32,7 @@ type AgentModel struct {
 	// Optional
 	Links        types.List     `tfsdk:"links"`
 	Tasks        []TaskModel    `tfsdk:"tasks"`
-	Tools        types.List     `tfsdk:"links"`
+	Tools        types.List     `tfsdk:"tools"`
 	Users        types.List     `tfsdk:"users"`
 	Groups       types.List     `tfsdk:"groups"`
 	Secrets      types.List     `tfsdk:"secrets"`
