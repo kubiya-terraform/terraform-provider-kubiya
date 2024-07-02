@@ -157,19 +157,19 @@ func (c *Client) ReadKnowledge(_ context.Context, e *entities.KnowledgeModel) er
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
+	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
 }
 
 func (c *Client) DeleteKnowledge(ctx context.Context, e *entities.KnowledgeModel) error {
 	if e != nil {
 		id := e.Id.ValueString()
-		path := format("/api/v1/agents/%s", id)
+		path := format("/api/v1/knowledge/%s", id)
 
 		_, err := c.delete(ctx, c.uri(path))
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
+	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
 }
 
 func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel) error {
@@ -180,7 +180,7 @@ func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 		}
 
 		id := e.Id.ValueString()
-		uri := c.uri(format("/api/v1/agents/%s", id))
+		uri := c.uri(format("/api/v1/knowledge/%s", id))
 
 		data, err := toKnowledge(e, cs)
 		if err != nil {
@@ -206,7 +206,7 @@ func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 		e, err = fromKnowledge(r, cs)
 		return err
 	}
-	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
+	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
 }
 
 func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel) (*entities.KnowledgeModel, error) {
@@ -242,5 +242,5 @@ func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 		return fromKnowledge(r, cs)
 	}
 
-	return e, fmt.Errorf("param entity (*entities.AgentModel) is nil")
+	return e, fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
 }
