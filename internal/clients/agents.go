@@ -87,7 +87,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Starters: make([]starter, 0),
 	}
 
-	for _, v := range cs.runners {
+	for _, v := range cs.runnerList {
 		item := a.Runner.ValueString()
 		if validRunner = equal(v.Name, item); validRunner {
 			break
@@ -137,7 +137,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			found := false
 			str := v.String()
 			item := strings.ReplaceAll(str, "\"", "")
-			for _, i := range cs.users {
+			for _, i := range cs.userList {
 				if found = equal(i.Name, item) ||
 					equal(i.Email, item); found {
 					result.Users = append(result.Users, i.UUID)
@@ -155,7 +155,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			found := false
 			str := v.String()
 			item := strings.ReplaceAll(str, "\"", "")
-			for _, i := range cs.groups {
+			for _, i := range cs.groupList {
 				if found = equal(i.Name, item); found {
 					result.Groups = append(result.Groups, i.UUID)
 					break
@@ -172,7 +172,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			found := false
 			str := v.String()
 			item := strings.ReplaceAll(str, "\"", "")
-			for _, i := range cs.secrets {
+			for _, i := range cs.secretList {
 				if found = equal(i.Name, item); found {
 					result.Secrets = append(result.Secrets, i.Name)
 					break
@@ -189,7 +189,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			found := false
 			str := v.String()
 			item := strings.ReplaceAll(str, "\"", "")
-			for _, i := range cs.integrations {
+			for _, i := range cs.integrationList {
 				if found = equal(i.Name, item); found {
 					result.Integrations = append(result.Integrations, i.Name)
 					break
@@ -205,9 +205,9 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
 	}
 
-	if valid := slices.Contains(cs.models, result.LlmModel); !valid {
+	if valid := slices.Contains(cs.modelList, result.LlmModel); !valid {
 		model := result.LlmModel
-		models := strings.Join(cs.models, ",")
+		models := strings.Join(cs.modelList, ",")
 		err = errors.Join(err, eformat("LLM Model \"%s\" not valid. [%s]", model, models))
 	}
 
@@ -229,7 +229,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	groupList := make([]string, 0)
 
 	if a.Metadata != nil {
-		for _, u := range cs.users {
+		for _, u := range cs.userList {
 			if equal(u.UUID, a.Metadata.UserCreated) {
 				result.Owner = types.StringValue(u.Email)
 				break
@@ -265,7 +265,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	}
 
 	for _, t := range a.Users {
-		for _, u := range cs.users {
+		for _, u := range cs.userList {
 			if equal(u.UUID, t) {
 				usersList = append(usersList, u.Email)
 				break
@@ -274,7 +274,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	}
 
 	for _, t := range a.Groups {
-		for _, g := range cs.groups {
+		for _, g := range cs.groupList {
 			if equal(g.UUID, t) {
 				groupList = append(groupList, g.Name)
 				break
@@ -309,7 +309,7 @@ func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) error {
 		id := e.Id
 		name := e.Name
 
-		for _, a := range cs.agents {
+		for _, a := range cs.agentList {
 			if equal(a.Uuid, id.ValueString()) ||
 				equal(a.Name, name.ValueString()) {
 				e, err = fromAgent(a, cs)

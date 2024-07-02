@@ -43,7 +43,7 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		Source:     w.Source.ValueString(),
 	}
 
-	for _, a := range cs.agents {
+	for _, a := range cs.agentList {
 		if equal(a.Name, w.Agent.ValueString()) {
 			wh.AgentId = a.Uuid
 			break
@@ -61,7 +61,7 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 
 		if !strings.HasPrefix(destination, pound) {
 			t := strings.TrimPrefix(destination, at)
-			for _, u := range cs.users {
+			for _, u := range cs.userList {
 				if equal(t, u.Name) {
 					destination = u.Email
 					break
@@ -85,14 +85,14 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		destination = w.Communication.Destination
 	}
 
-	for _, u := range cs.users {
+	for _, u := range cs.userList {
 		if strings.EqualFold(w.CreatedBy, u.UUID) {
 			by = u.Email
 			break
 		}
 	}
 
-	for _, a := range cs.agents {
+	for _, a := range cs.agentList {
 		if strings.EqualFold(w.AgentId, a.Uuid) {
 			agentName = a.Name
 			break
@@ -124,7 +124,7 @@ func (c *Client) ReadWebhook(_ context.Context, entity *entities.WebhookModel) e
 		id := entity.Id.ValueString()
 		name := entity.Name.ValueString()
 
-		for _, w := range cs.webhooks {
+		for _, w := range cs.webhookList {
 			if equal(w.Id, id) || equal(w.Name, name) {
 				entity = fromWebhook(w, cs)
 				break

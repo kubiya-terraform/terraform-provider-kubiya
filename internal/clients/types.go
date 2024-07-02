@@ -41,12 +41,13 @@ type integration struct {
 
 type state struct {
 	//self         *user
-	users        []*user
-	agents       []*agent
-	groups       []*group
-	models       []string
-	runners      []*runner
-	secrets      []*secret
-	webhooks     []*webhook
-	integrations []*integration
+	userList        []*user
+	agentList       []*agent
+	groupList       []*group
+	modelList       []string
+	runnerList      []*runner
+	secretList      []*secret
+	webhookList     []*webhook
+	knowledgeList   []*knowledge
+	integrationList []*integration
 }
