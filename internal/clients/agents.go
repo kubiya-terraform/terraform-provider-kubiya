@@ -35,6 +35,7 @@ type agent struct {
 	Groups       []string  `json:"allowed_groups"`
 	Owners       []string  `json:"owners,omitempty"`
 	Runners      []string  `json:"runners,omitempty"`
+	IsDebugMode  bool      `json:"is_debug_mode,omitempty"`
 
 	Metadata  *metadata         `json:"metadata"`
 	Variables map[string]string `json:"environment_variables"`
@@ -72,6 +73,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 		Email:        "",
 		Organization: "",
+		IsDebugMode:  a.IsDebugMode.ValueBool(),
 
 		Owners: make([]string, 0),
 
@@ -221,6 +223,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		Name:         types.StringValue(a.Name),
 		Image:        types.StringValue(a.Image),
 		Model:        types.StringValue(a.LlmModel),
+		IsDebugMode:  types.BoolValue(a.IsDebugMode),
 		Description:  types.StringValue(a.Description),
 		Instructions: types.StringValue(a.AiInstructions),
 	}
