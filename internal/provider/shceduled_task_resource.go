@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
@@ -21,8 +22,7 @@ type scheduledTaskResource struct {
 }
 
 func (r *scheduledTaskResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	//TODO implement me
-	panic("implement me")
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
 func NewScheduledTaskResourceResource() resource.Resource {
