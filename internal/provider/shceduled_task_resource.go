@@ -21,12 +21,11 @@ type scheduledTaskResource struct {
 	client *clients.Client
 }
 
-func (r *scheduledTaskResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-}
-
 func NewScheduledTaskResourceResource() resource.Resource {
 	return &scheduledTaskResource{}
+}
+
+func (r *scheduledTaskResource) Update(_ context.Context, _ resource.UpdateRequest, _ *resource.UpdateResponse) {
 }
 
 func (r *scheduledTaskResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -38,14 +37,16 @@ func (r *scheduledTaskResource) Read(ctx context.Context, req resource.ReadReque
 		return
 	}
 
-	if err := r.client.ReadScheduledTask(ctx, &state); err != nil {
+	id := state.Id.ValueString()
+	updatedState, err := r.client.ReadScheduledTask(ctx, id)
+	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
 func (r *scheduledTaskResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -90,9 +91,6 @@ func (r *scheduledTaskResource) Create(ctx context.Context, req resource.CreateR
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
-func (r *scheduledTaskResource) Update(_ context.Context, _ resource.UpdateRequest, _ *resource.UpdateResponse) {
-}
-
 func (r *scheduledTaskResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_scheduled_task"
 }
@@ -110,4 +108,8 @@ func (r *scheduledTaskResource) Configure(_ context.Context, req resource.Config
 		r.name = "scheduled_task"
 		r.client = client
 	}
+}
+
+func (r *scheduledTaskResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

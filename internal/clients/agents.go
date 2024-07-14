@@ -302,30 +302,6 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	return result, err
 }
 
-func (c *Client) ReadAgent(_ context.Context, e *entities.AgentModel) error {
-	if e != nil {
-		cs, err := c.state()
-		if err != nil {
-			return err
-		}
-
-		id := e.Id
-		name := e.Name
-
-		for _, a := range cs.agentList {
-			if equal(a.Uuid, id.ValueString()) ||
-				equal(a.Name, name.ValueString()) {
-				e, err = fromAgent(a, cs)
-				break
-			}
-		}
-
-		return err
-	}
-
-	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
-}
-
 func (c *Client) DeleteAgent(ctx context.Context, e *entities.AgentModel) error {
 	if e != nil {
 		id := e.Id.ValueString()
@@ -374,6 +350,36 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 		return err
 	}
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
+}
+
+func (c *Client) ReadAgent(ctx context.Context, id string) (*entities.AgentModel, error) {
+	cs, err := c.state()
+	if err != nil {
+		return nil, err
+	}
+
+	path := format("/api/v1/agents/%s", id)
+
+	resp, err := c.read(ctx, c.uri(path))
+	if err != nil {
+		return nil, err
+	}
+
+	var r *agent
+	err = json.NewDecoder(resp).Decode(&r)
+	if err != nil {
+		return nil, err
+	}
+
+	entity, err := fromAgent(r, cs)
+	if err != nil || entity == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, eformat("Agent %s not found", id)
+	}
+
+	return entity, nil
 }
 
 func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {
