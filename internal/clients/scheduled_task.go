@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -22,6 +23,15 @@ type scheduledTask struct {
 	Status            string            `json:"status,omitempty"`
 	Parameters        map[string]string `json:"parameters,omitempty"`
 	NextScheduledTime time.Time         `json:"next_scheduled_time,omitempty"`
+}
+
+func newScheduledTask(body io.Reader) (*scheduledTask, error) {
+	var result *scheduledTask
+	if err := json.NewDecoder(body).Decode(result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func toScheduledTask(a *entities.ScheduledTaskModel) (*scheduledTask, error) {
@@ -89,29 +99,6 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 	return result, err
 }
 
-func (c *Client) ReadScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) error {
-	if e != nil {
-		id := e.Id.ValueString()
-		path := format("/api/v1/scheduled_tasks/%s", id)
-
-		resp, err := c.read(ctx, c.uri(path))
-		if err != nil {
-			return err
-		}
-
-		var r *scheduledTask
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil {
-			return err
-		}
-
-		e, err = fromScheduledTask(r)
-		return err
-	}
-
-	return fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
-}
-
 func (c *Client) DeleteScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) error {
 	if e != nil {
 		id := e.Id.ValueString()
@@ -122,6 +109,30 @@ func (c *Client) DeleteScheduledTask(ctx context.Context, e *entities.ScheduledT
 	}
 
 	return fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
+}
+
+func (c *Client) ReadScheduledTask(ctx context.Context, id string) (*entities.ScheduledTaskModel, error) {
+	path := format("/api/v1/scheduled_tasks/%s", id)
+
+	resp, err := c.read(ctx, c.uri(path))
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := newScheduledTask(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	entity, err := fromScheduledTask(r)
+	if err != nil || entity == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, eformat("ScheduledTask %s not found", id)
+	}
+
+	return entity, nil
 }
 
 func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) (*entities.ScheduledTaskModel, error) {
