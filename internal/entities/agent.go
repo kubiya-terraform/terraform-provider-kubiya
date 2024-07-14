@@ -3,6 +3,7 @@ package entities
 import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -20,8 +21,9 @@ type AgentModel struct {
 	CreatedAt types.String `tfsdk:"created_at"`
 
 	// Required with default value
-	Image types.String `tfsdk:"image"`
-	Model types.String `tfsdk:"model"`
+	Image       types.String `tfsdk:"image"`
+	Model       types.String `tfsdk:"model"`
+	IsDebugMode types.Bool   `tfsdk:"is_debug_mode"`
 
 	// Required
 	Name         types.String `tfsdk:"name"`
@@ -74,6 +76,14 @@ func AgentSchema() schema.Schema {
 				Required:            true,
 				Description:         "The instructions for the agent",
 				MarkdownDescription: "Instructions provided to the agent",
+			},
+
+			"is_debug_mode": schema.BoolAttribute{
+				Optional:            true,
+				Computed:            true,
+				Description:         "Indicate if agent will with debug mode",
+				MarkdownDescription: "Indicate if agent will with debug mode",
+				Default:             booldefault.StaticBool(false),
 			},
 
 			// Required with default values

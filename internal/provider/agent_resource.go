@@ -125,6 +125,9 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.CreatedAt.IsNull() && !plan.CreatedAt.IsUnknown() {
 		updatedState.CreatedAt = plan.CreatedAt
 	}
+	if !plan.IsDebugMode.IsNull() && !plan.IsDebugMode.IsUnknown() {
+		updatedState.IsDebugMode = plan.IsDebugMode
+	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		updatedState.Description = plan.Description
 	}
