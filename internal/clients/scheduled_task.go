@@ -13,16 +13,24 @@ import (
 )
 
 type scheduledTask struct {
-	Id                string            `json:"id"`
-	Email             string            `json:"email,omitempty"`
-	ChannelId         string            `json:"channel_id,omitempty"`
-	Description       string            `json:"description,omitempty"`
-	Agent             string            `json:"agent,omitempty"`
-	TaskType          string            `json:"task_type,omitempty"`
-	ScheduledTime     time.Time         `json:"scheduled_time,omitempty"`
-	Status            string            `json:"status,omitempty"`
-	Parameters        map[string]string `json:"parameters,omitempty"`
-	NextScheduledTime time.Time         `json:"next_scheduled_time,omitempty"`
+	Id                string                 `json:"task_id"`
+	UUID              string                 `json:"task_uuid"`
+	Email             string                 `json:"user_email,omitempty"`
+	ChannelId         string                 `json:"channel_id,omitempty"`
+	Description       string                 `json:"description,omitempty"`
+	Agent             string                 `json:"agent,omitempty"`
+	TaskType          string                 `json:"task_type,omitempty"`
+	ScheduledTime     time.Time              `json:"scheduled_time,omitempty"`
+	Status            string                 `json:"status,omitempty"`
+	Parameters        map[string]interface{} `json:"parameters,omitempty"`
+	NextScheduledTime time.Time              `json:"next_schedule_time,omitempty"`
+}
+
+type createScheduledTaskRequest struct {
+	ChannelId     string    `json:"channel_id"`
+	ScheduledTime time.Time `json:"schedule_time"`
+	Agent         string    `json:"selected_agent"`
+	Description   string    `json:"task_description"`
 }
 
 func newScheduledTask(body io.Reader) (*scheduledTask, error) {
@@ -34,34 +42,52 @@ func newScheduledTask(body io.Reader) (*scheduledTask, error) {
 	return result, nil
 }
 
-func toScheduledTask(a *entities.ScheduledTaskModel) (*scheduledTask, error) {
+func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 	var err error
-
-	const (
-		scheduledTimeField     = "scheduled_time"
-		nextScheduledTimeField = "next_scheduled_time"
-	)
-
-	result := &scheduledTask{
-		Id:          a.Id.ValueString(),
-		Agent:       a.Agent.ValueString(),
-		Email:       a.Email.ValueString(),
-		Status:      a.Status.ValueString(),
-		TaskType:    a.TaskType.ValueString(),
-		ChannelId:   a.ChannelId.ValueString(),
-		Parameters:  toStringMap(a.Parameters),
-		Description: a.Description.ValueString(),
+	result := &entities.ScheduledTaskModel{
+		Id:                types.StringValue(a.Id),
+		UUID:              types.StringValue(a.UUID),
+		Status:            types.StringValue(a.Status),
+		TaskType:          types.StringValue(a.TaskType),
+		ChannelId:         types.StringValue(a.ChannelId),
+		Description:       types.StringValue(a.Description),
+		ScheduledTime:     types.StringValue(a.ScheduledTime.Format("2006-01-02T15:04:05")),
+		NextScheduledTime: types.StringValue(a.NextScheduledTime.Format("2006-01-02T15:04:05")),
 	}
 
-	scheduledTime := a.ScheduledTime.ValueString()
-	nextScheduledTime := a.NextScheduledTime.ValueString()
+	parameters := map[string]string{}
+	for key, val := range a.Parameters {
+		if key == "context" {
+			if str, ok := val.(string); ok {
+				result.Agent = types.StringValue(str)
+			}
+		}
 
+		if str, ok := val.(string); ok {
+			parameters[key] = str
+		}
+	}
+	result.Parameters = toMapType(parameters, err)
+
+	return result, err
+}
+
+func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRequest, error) {
+	var err error
+	result := &createScheduledTaskRequest{
+		ScheduledTime: time.Time{},
+		Agent:         e.Agent.ValueString(),
+		ChannelId:     e.ChannelId.ValueString(),
+		Description:   e.Description.ValueString(),
+	}
+
+	scheduledTime := e.ScheduledTime.ValueString()
 	parseTime := func(t, f string, e error) (time.Time, error) {
 		if e != nil {
 			return time.Time{}, e
 		}
 
-		layout := "2006-01-02 15:04:05"
+		layout := "2006-01-02T15:04:05"
 		ts, parseError := time.Parse(layout, t)
 		if parseError != nil {
 			return time.Time{}, parseError
@@ -73,28 +99,7 @@ func toScheduledTask(a *entities.ScheduledTaskModel) (*scheduledTask, error) {
 
 		return ts, nil
 	}
-
-	result.ScheduledTime, err = parseTime(scheduledTime, scheduledTimeField, err)
-	result.NextScheduledTime, err = parseTime(nextScheduledTime, nextScheduledTimeField, err)
-
-	return result, err
-}
-
-func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
-	var err error
-	result := &entities.ScheduledTaskModel{
-		Id:                types.StringValue(a.Id),
-		Email:             types.StringValue(a.Email),
-		ChannelId:         types.StringValue(a.ChannelId),
-		Agent:             types.StringValue(a.Agent),
-		Status:            types.StringValue(a.Status),
-		TaskType:          types.StringValue(a.TaskType),
-		Description:       types.StringValue(a.Description),
-		ScheduledTime:     types.StringValue(a.ScheduledTime.Format("2006-01-02 15:04:05")),
-		NextScheduledTime: types.StringValue(a.ScheduledTime.Format("2006-01-02 15:04:05")),
-	}
-
-	result.Parameters = toMapType(a.Parameters, err)
+	result.ScheduledTime, err = parseTime(scheduledTime, "scheduled_time", err)
 
 	return result, err
 }
@@ -137,7 +142,7 @@ func (c *Client) ReadScheduledTask(ctx context.Context, id string) (*entities.Sc
 
 func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) (*entities.ScheduledTaskModel, error) {
 	if e != nil {
-		data, err := toScheduledTask(e)
+		data, err := createScheduledTask(e)
 		if err != nil {
 			return nil, err
 		}
