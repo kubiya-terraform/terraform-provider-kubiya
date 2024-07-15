@@ -7,6 +7,7 @@ import (
 
 type ScheduledTaskModel struct {
 	Id        types.String `tfsdk:"id"`
+	UUID      types.String `tfsdk:"uuid"`
 	Email     types.String `tfsdk:"email"`
 	ChannelId types.String `tfsdk:"channel_id"`
 
@@ -24,21 +25,10 @@ func ScheduledTaskSchema() schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			// Computed
 			"id": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The ID of the agent",
-				MarkdownDescription: "The unique identifier of the agent",
+				Computed: true,
 			},
-
-			// Required
-			"email": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The owner of the agent",
-				MarkdownDescription: "The user who created the agent",
-			},
-			"channel_id": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The creation time of the agent",
-				MarkdownDescription: "The timestamp when the agent was created",
+			"uuid": schema.StringAttribute{
+				Computed: true,
 			},
 
 			// Optional
@@ -54,6 +44,9 @@ func ScheduledTaskSchema() schema.Schema {
 				ElementType: types.StringType,
 			},
 			"task_type": schema.StringAttribute{
+				Optional: true,
+			},
+			"channel_id": schema.StringAttribute{
 				Optional: true,
 			},
 			"description": schema.StringAttribute{

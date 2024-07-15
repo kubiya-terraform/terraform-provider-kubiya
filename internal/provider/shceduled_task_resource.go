@@ -21,7 +21,7 @@ type scheduledTaskResource struct {
 	client *clients.Client
 }
 
-func NewScheduledTaskResourceResource() resource.Resource {
+func NewScheduledTaskResource() resource.Resource {
 	return &scheduledTaskResource{}
 }
 
