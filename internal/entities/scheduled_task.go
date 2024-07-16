@@ -30,13 +30,28 @@ func ScheduledTaskSchema() schema.Schema {
 			"uuid": schema.StringAttribute{
 				Computed: true,
 			},
+			"email": schema.StringAttribute{
+				Computed: true,
+			},
+
+			// Required
+			"agent": schema.StringAttribute{
+				Required: true,
+			},
+			"channel_id": schema.StringAttribute{
+				Required: true,
+			},
+			"description": schema.StringAttribute{
+				Required: true,
+			},
+			"scheduled_time": schema.StringAttribute{
+				Required: true,
+			},
 
 			// Optional
-			"agent": schema.StringAttribute{
-				Optional: true,
-			},
 			"status": schema.StringAttribute{
 				Optional: true,
+				Computed: true,
 			},
 			"parameters": schema.MapAttribute{
 				Computed:    true,
@@ -45,18 +60,11 @@ func ScheduledTaskSchema() schema.Schema {
 			},
 			"task_type": schema.StringAttribute{
 				Optional: true,
-			},
-			"channel_id": schema.StringAttribute{
-				Optional: true,
-			},
-			"description": schema.StringAttribute{
-				Optional: true,
-			},
-			"scheduled_time": schema.StringAttribute{
-				Optional: true,
+				Computed: true,
 			},
 			"next_scheduled_time": schema.StringAttribute{
 				Optional: true,
+				Computed: true,
 			},
 		},
 	}
