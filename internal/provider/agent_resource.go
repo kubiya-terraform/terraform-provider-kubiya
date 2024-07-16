@@ -2,7 +2,9 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
@@ -10,8 +12,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = (*agentResource)(nil)
-	_ resource.ResourceWithConfigure = (*agentResource)(nil)
+	_ resource.Resource                = (*agentResource)(nil)
+	_ resource.ResourceWithConfigure   = (*agentResource)(nil)
+	_ resource.ResourceWithImportState = (*agentResource)(nil)
 )
 
 type agentResource struct {
@@ -32,14 +35,20 @@ func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	if err := r.client.ReadAgent(ctx, &state); err != nil {
+	id := state.Id.ValueString()
+
+	updatedState, err := r.client.ReadAgent(ctx, id)
+	if err != nil || updatedState == nil {
+		if err == nil {
+			err = fmt.Errorf("agent %s not found", id)
+		}
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
 func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -125,6 +134,9 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.CreatedAt.IsNull() && !plan.CreatedAt.IsUnknown() {
 		updatedState.CreatedAt = plan.CreatedAt
 	}
+	if !plan.IsDebugMode.IsNull() && !plan.IsDebugMode.IsUnknown() {
+		updatedState.IsDebugMode = plan.IsDebugMode
+	}
 	if !plan.Description.IsNull() && !plan.Description.IsUnknown() {
 		updatedState.Description = plan.Description
 	}
@@ -181,4 +193,8 @@ func (r *agentResource) Configure(_ context.Context, req resource.ConfigureReque
 		r.name = "agent"
 		r.client = client
 	}
+}
+
+func (r *agentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

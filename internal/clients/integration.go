@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -30,6 +31,15 @@ type (
 		Type        string      `json:"integration_type"`
 	}
 )
+
+func newIntegration(body io.Reader) (*integrationApi, error) {
+	var result integrationApi
+	if err := json.NewDecoder(body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
 
 func diagnosticsToErrors(items diag.Diagnostics) (err error) {
 	const t = "[%s] %s. Error: %s"
@@ -114,29 +124,6 @@ func toIntegrationModel(e *integrationApi) (*entities.IntegrationModel, error) {
 	}, err
 }
 
-func (c *Client) ReadIntegration(ctx context.Context, e *entities.IntegrationModel) error {
-	if e != nil {
-		name := e.Name.ValueString()
-
-		resp, err := c.read(ctx, c.uri(format("/api/v2/integrations/%s", name)))
-		if err != nil {
-			return err
-		}
-
-		var r integrationApi
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil {
-			return err
-		}
-
-		e, err = toIntegrationModel(&r)
-
-		return err
-	}
-
-	return fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
-}
-
 func (c *Client) DeleteIntegration(ctx context.Context, e *entities.IntegrationModel) error {
 	if e != nil {
 		name := e.Name.ValueString()
@@ -181,6 +168,28 @@ func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationM
 	}
 
 	return fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+}
+
+func (c *Client) ReadIntegration(ctx context.Context, name string) (*entities.IntegrationModel, error) {
+	resp, err := c.read(ctx, c.uri(format("/api/v2/integrations/%s", name)))
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := newIntegration(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	entity, err := toIntegrationModel(r)
+	if err != nil || entity == nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, eformat("Integration %s not found", name)
+	}
+
+	return entity, nil
 }
 
 func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationModel) (*entities.IntegrationModel, error) {
