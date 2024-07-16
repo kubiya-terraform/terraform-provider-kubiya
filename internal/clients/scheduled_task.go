@@ -17,16 +17,18 @@ type scheduledTask struct {
 	UUID              string                 `json:"task_uuid"`
 	Email             string                 `json:"user_email,omitempty"`
 	ChannelId         string                 `json:"channel_id,omitempty"`
-	Description       string                 `json:"description,omitempty"`
+	Description       string                 `json:"task_description,omitempty"`
 	Agent             string                 `json:"agent,omitempty"`
 	TaskType          string                 `json:"task_type,omitempty"`
-	ScheduledTime     time.Time              `json:"scheduled_time,omitempty"`
+	ScheduledTime     string                 `json:"scheduled_time,omitempty"`
 	Status            string                 `json:"status,omitempty"`
 	Parameters        map[string]interface{} `json:"parameters,omitempty"`
-	NextScheduledTime time.Time              `json:"next_schedule_time,omitempty"`
+	NextScheduledTime string                 `json:"next_schedule_time,omitempty"`
 }
 
 type createScheduledTaskRequest struct {
+	Org           string    `json:"organization_name"`
+	Email         string    `json:"user_email"`
 	ChannelId     string    `json:"channel_id"`
 	ScheduledTime time.Time `json:"schedule_time"`
 	Agent         string    `json:"selected_agent"`
@@ -34,12 +36,12 @@ type createScheduledTaskRequest struct {
 }
 
 func newScheduledTask(body io.Reader) (*scheduledTask, error) {
-	var result *scheduledTask
-	if err := json.NewDecoder(body).Decode(result); err != nil {
+	var result scheduledTask
+	if err := json.NewDecoder(body).Decode(&result); err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
@@ -47,12 +49,12 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 	result := &entities.ScheduledTaskModel{
 		Id:                types.StringValue(a.Id),
 		UUID:              types.StringValue(a.UUID),
+		Email:             types.StringValue(a.Email),
 		Status:            types.StringValue(a.Status),
 		TaskType:          types.StringValue(a.TaskType),
 		ChannelId:         types.StringValue(a.ChannelId),
-		Description:       types.StringValue(a.Description),
-		ScheduledTime:     types.StringValue(a.ScheduledTime.Format("2006-01-02T15:04:05")),
-		NextScheduledTime: types.StringValue(a.NextScheduledTime.Format("2006-01-02T15:04:05")),
+		ScheduledTime:     types.StringValue(a.ScheduledTime),
+		NextScheduledTime: types.StringValue(a.NextScheduledTime),
 	}
 
 	parameters := map[string]string{}
@@ -60,6 +62,12 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		if key == "context" {
 			if str, ok := val.(string); ok {
 				result.Agent = types.StringValue(str)
+			}
+		}
+
+		if key == "message_text" {
+			if str, ok := val.(string); ok {
+				result.Description = types.StringValue(str)
 			}
 		}
 
@@ -75,10 +83,9 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRequest, error) {
 	var err error
 	result := &createScheduledTaskRequest{
-		ScheduledTime: time.Time{},
-		Agent:         e.Agent.ValueString(),
-		ChannelId:     e.ChannelId.ValueString(),
-		Description:   e.Description.ValueString(),
+		Agent:       e.Agent.ValueString(),
+		ChannelId:   e.ChannelId.ValueString(),
+		Description: e.Description.ValueString(),
 	}
 
 	scheduledTime := e.ScheduledTime.ValueString()
@@ -134,6 +141,7 @@ func (c *Client) ReadScheduledTask(ctx context.Context, id string) (*entities.Sc
 		if err != nil {
 			return nil, err
 		}
+
 		return nil, eformat("ScheduledTask %s not found", id)
 	}
 
@@ -159,13 +167,17 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 			return nil, err
 		}
 
-		var r *scheduledTask
-		err = json.NewDecoder(resp).Decode(&r)
+		tmp := map[string]string{}
+		err = json.NewDecoder(resp).Decode(&tmp)
 		if err != nil {
 			return nil, err
 		}
 
-		return fromScheduledTask(r)
+		if id, ok := tmp["task_id"]; ok {
+			return c.ReadScheduledTask(ctx, id)
+		}
+
+		return nil, eformat("failed to create scheduled task")
 	}
 
 	return e, fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
