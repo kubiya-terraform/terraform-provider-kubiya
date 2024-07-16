@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
@@ -10,8 +11,9 @@ import (
 )
 
 var (
-	_ resource.Resource              = (*integrationResource)(nil)
-	_ resource.ResourceWithConfigure = (*integrationResource)(nil)
+	_ resource.Resource                = (*integrationResource)(nil)
+	_ resource.ResourceWithConfigure   = (*integrationResource)(nil)
+	_ resource.ResourceWithImportState = (*integrationResource)(nil)
 )
 
 type integrationResource struct {
@@ -28,19 +30,20 @@ func (r *integrationResource) Read(ctx context.Context, req resource.ReadRequest
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	if err := r.client.ReadIntegration(ctx, &state); err != nil {
+	id := state.ID.ValueString()
+	updatedState, err := r.client.ReadIntegration(ctx, id)
+	if err != nil {
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
 func (r *integrationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
@@ -145,4 +148,8 @@ func (r *integrationResource) Configure(_ context.Context, req resource.Configur
 		r.name = "integration"
 		r.client = client
 	}
+}
+
+func (r *integrationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }

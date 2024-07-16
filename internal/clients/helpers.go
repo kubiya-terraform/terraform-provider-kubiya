@@ -16,6 +16,10 @@ func closeBody(b io.ReadCloser) {
 	_ = b.Close()
 }
 
+func clean(str, o, n string) string {
+	return strings.ReplaceAll(str, o, n)
+}
+
 func toPathYaml(pre, suf string) string {
 	slash := "/"
 	layout := "%s/%s.yaml"
@@ -112,6 +116,18 @@ func toMapType(items map[string]string, err error) types.Map {
 			severity := d.Severity()
 			err = errors.Join(err, eformat(errorLayout, severity, summary, detail))
 		}
+	}
+
+	return result
+}
+
+func toStringMap(m types.Map) map[string]string {
+	n := ""
+	o := "\""
+
+	var result map[string]string
+	for k, v := range m.Elements() {
+		result[k] = clean(v.String(), o, n)
 	}
 
 	return result

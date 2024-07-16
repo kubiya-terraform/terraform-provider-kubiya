@@ -33,6 +33,7 @@ func (p *kubiyaProvider) Resources(_ context.Context) []func() resource.Resource
 		NewWebhookResource,
 		NewKnowledgeResource,
 		NewIntegrationResource,
+		NewScheduledTaskResource,
 	}
 }
 
