@@ -36,6 +36,7 @@ func toKnowledge(a *entities.KnowledgeModel, cs *state) (*knowledge, error) {
 		Id:                    a.Id.ValueString(),
 		Name:                  a.Name.ValueString(),
 		Type:                  a.Type.ValueString(),
+		Owner:                 a.Owner.ValueString(),
 		Content:               a.Content.ValueString(),
 		Description:           a.Description.ValueString(),
 	}
@@ -103,6 +104,7 @@ func fromKnowledge(a *knowledge, cs *state) (*entities.KnowledgeModel, error) {
 		Id:          types.StringValue(a.Id),
 		Name:        types.StringValue(a.Name),
 		Type:        types.StringValue(a.Type),
+		Owner:       types.StringValue(a.Owner),
 		Content:     types.StringValue(a.Content),
 		Labels:      toListStringType(a.Labels, err),
 		Description: types.StringValue(a.Description),
