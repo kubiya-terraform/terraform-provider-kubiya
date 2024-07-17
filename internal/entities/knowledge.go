@@ -8,7 +8,8 @@ import (
 
 type KnowledgeModel struct {
 	// Computed
-	Id types.String `tfsdk:"id"`
+	Id    types.String `tfsdk:"id"`
+	Owner types.String `tfsdk:"owner"`
 
 	Name        types.String `tfsdk:"name"`
 	Type        types.String `tfsdk:"type"`
@@ -30,6 +31,9 @@ func KnowledgeSchema() schema.Schema {
 				Computed:            true,
 				Description:         "The ID of the knowledge",
 				MarkdownDescription: "The unique identifier of the knowledge",
+			},
+			"owner": schema.StringAttribute{
+				Computed: true,
 			},
 
 			// Required
