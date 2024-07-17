@@ -13,30 +13,31 @@ import (
 )
 
 type knowledge struct {
-	Name                  string         `json:"name"`
-	Description           string         `json:"description"`
-	Labels                []string       `json:"labels"`
-	Content               string         `json:"content"`
-	Groups                []string       `json:"groups"`
-	Properties            map[string]any `json:"properties"`
-	Owner                 string         `json:"owner"`
-	Type                  string         `json:"type"`
-	Source                string         `json:"source"`
-	SupportedAgents       []string       `json:"supported_agents"`
-	SupportedAgentsGroups []interface{}  `json:"supported_agents_groups"`
-	Id                    string         `json:"uuid"`
+	Name                  string   `json:"name"`
+	Description           string   `json:"description"`
+	Labels                []string `json:"labels"`
+	Content               string   `json:"content"`
+	Groups                []string `json:"groups"`
+	Owner                 string   `json:"owner"`
+	Type                  string   `json:"type"`
+	Source                string   `json:"source"`
+	SupportedAgents       []string `json:"supported_agents"`
+	SupportedAgentsGroups []string `json:"supported_agents_groups"`
+	Id                    string   `json:"uuid"`
 }
 
 func toKnowledge(a *entities.KnowledgeModel, cs *state) (*knowledge, error) {
 	var err error
 
 	result := &knowledge{
-		Source:      "terraform",
-		Id:          a.Id.ValueString(),
-		Name:        a.Name.ValueString(),
-		Type:        a.Type.ValueString(),
-		Content:     a.Content.ValueString(),
-		Description: a.Description.ValueString(),
+		Source:                "terraform",
+		SupportedAgents:       make([]string, 0),
+		SupportedAgentsGroups: make([]string, 0),
+		Id:                    a.Id.ValueString(),
+		Name:                  a.Name.ValueString(),
+		Type:                  a.Type.ValueString(),
+		Content:               a.Content.ValueString(),
+		Description:           a.Description.ValueString(),
 	}
 
 	if !a.Labels.IsNull() && !a.Labels.IsUnknown() {
@@ -123,14 +124,14 @@ func fromKnowledge(a *knowledge, cs *state) (*entities.KnowledgeModel, error) {
 	if len(a.SupportedAgents) >= 1 {
 		list := make([]string, 0)
 		for _, t := range a.SupportedAgents {
-			for _, g := range cs.agentList {
-				if equal(g.Name, t) {
-					list = append(list, g.Name)
+			for _, agentItem := range cs.agentList {
+				if equal(agentItem.Uuid, t) {
+					list = append(list, agentItem.Name)
 					break
 				}
 			}
 		}
-		result.Groups = toListStringType(list, err)
+		result.SupportedAgents = toListStringType(list, err)
 	}
 
 	return result, err
