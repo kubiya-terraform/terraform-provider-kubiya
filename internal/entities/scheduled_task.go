@@ -93,12 +93,15 @@ func ScheduledTaskSchema() schema.Schema {
 
 func (s *ScheduledTaskModel) ParseCron(cronExpr string) error {
 	const (
-		empty   = ""
 		daily   = "daily"
 		hourly  = "hourly"
 		weekly  = "weekly"
 		monthly = "monthly"
 	)
+
+	if len(cronExpr) <= 0 {
+		return nil
+	}
 
 	err := validCron(cronExpr)
 	if err != nil {
@@ -114,8 +117,6 @@ func (s *ScheduledTaskModel) ParseCron(cronExpr string) error {
 		s.Repeat = types.StringValue(weekly)
 	case isMonthly(cronExpr):
 		s.Repeat = types.StringValue(monthly)
-	default:
-		s.Repeat = types.StringValue(empty)
 	}
 
 	return nil
