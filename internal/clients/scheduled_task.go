@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -27,12 +28,33 @@ type scheduledTask struct {
 }
 
 type createScheduledTaskRequest struct {
-	Org           string    `json:"organization_name"`
 	Email         string    `json:"user_email"`
 	ChannelId     string    `json:"channel_id"`
+	CronString    string    `json:"cron_string"`
 	ScheduledTime time.Time `json:"schedule_time"`
 	Agent         string    `json:"selected_agent"`
 	Description   string    `json:"task_description"`
+	Org           string    `json:"organization_name"`
+}
+
+func toDailyCron(t time.Time) string {
+	const layout = "0 %d %d * * *"
+	return fmt.Sprintf(layout, t.Minute(), t.Hour())
+}
+
+func toHourlyCron(t time.Time) string {
+	const layout = "0 %d * * * *"
+	return fmt.Sprintf(layout, t.Minute())
+}
+
+func toWeeklyCron(t time.Time) string {
+	const layout = "0 %d %d * * %d"
+	return fmt.Sprintf(layout, t.Minute(), t.Hour(), int(t.Weekday()))
+}
+
+func toMonthlyCron(t time.Time) string {
+	const layout = "0 %d %d %d * *"
+	return fmt.Sprintf(layout, t.Minute(), t.Hour(), t.Day())
 }
 
 func newScheduledTask(body io.Reader) (*scheduledTask, error) {
@@ -59,6 +81,21 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 
 	parameters := map[string]string{}
 	for key, val := range a.Parameters {
+		if key == "repeat" {
+			if boolean, ok := val.(bool); ok && boolean {
+				if _, ok = a.Parameters["cron_string"]; ok {
+					item := a.Parameters["cron_string"]
+					if _, ok = a.Parameters["cron_string"].(string); ok {
+						if e := result.ParseCron(item.(string)); e != nil {
+							err = errors.Join(err, e)
+							continue
+						}
+						result.Description = types.StringValue(item.(string))
+					}
+				}
+			}
+		}
+
 		if key == "context" {
 			if str, ok := val.(string); ok {
 				result.Agent = types.StringValue(str)
@@ -81,8 +118,17 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 }
 
 func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRequest, error) {
+	const (
+		empty   = ""
+		daily   = "daily"
+		hourly  = "hourly"
+		weekly  = "weekly"
+		monthly = "monthly"
+	)
+
 	var err error
 	result := &createScheduledTaskRequest{
+		CronString:  empty,
 		Agent:       e.Agent.ValueString(),
 		ChannelId:   e.ChannelId.ValueString(),
 		Description: e.Description.ValueString(),
@@ -107,6 +153,19 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 		return ts, nil
 	}
 	result.ScheduledTime, err = parseTime(scheduledTime, "scheduled_time", err)
+
+	if !result.ScheduledTime.IsZero() && err != nil {
+		switch e.Repeat.ValueString() {
+		case daily:
+			result.CronString = toDailyCron(result.ScheduledTime)
+		case hourly:
+			result.CronString = toHourlyCron(result.ScheduledTime)
+		case weekly:
+			result.CronString = toWeeklyCron(result.ScheduledTime)
+		case monthly:
+			result.CronString = toMonthlyCron(result.ScheduledTime)
+		}
+	}
 
 	return result, err
 }
