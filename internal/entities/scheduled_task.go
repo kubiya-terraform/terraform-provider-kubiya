@@ -2,6 +2,8 @@ package entities
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -9,6 +11,7 @@ type ScheduledTaskModel struct {
 	Id        types.String `tfsdk:"id"`
 	UUID      types.String `tfsdk:"uuid"`
 	Email     types.String `tfsdk:"email"`
+	Repeat    types.String `tfsdk:"repeat"` // no_repeat, daily, weekly, monthly
 	ChannelId types.String `tfsdk:"channel_id"`
 
 	Agent             types.String `tfsdk:"agent"`
@@ -21,6 +24,15 @@ type ScheduledTaskModel struct {
 }
 
 func ScheduledTaskSchema() schema.Schema {
+	const (
+		empty   = ""
+		daily   = "daily"
+		hourly  = "hourly"
+		weekly  = "weekly"
+		monthly = "monthly"
+		repeat  = "repeat"
+	)
+
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			// Computed
@@ -32,6 +44,15 @@ func ScheduledTaskSchema() schema.Schema {
 			},
 			"email": schema.StringAttribute{
 				Computed: true,
+			},
+			"repeat": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Validators: []validator.String{
+					onOfValidator(repeat, []string{empty,
+						hourly, daily, weekly, monthly}),
+				},
+				Default: stringdefault.StaticString(empty),
 			},
 
 			// Required
@@ -68,4 +89,34 @@ func ScheduledTaskSchema() schema.Schema {
 			},
 		},
 	}
+}
+
+func (s *ScheduledTaskModel) ParseCron(cronExpr string) error {
+	const (
+		empty   = ""
+		daily   = "daily"
+		hourly  = "hourly"
+		weekly  = "weekly"
+		monthly = "monthly"
+	)
+
+	err := validCron(cronExpr)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case isDaily(cronExpr):
+		s.Repeat = types.StringValue(daily)
+	case isHourly(cronExpr):
+		s.Repeat = types.StringValue(hourly)
+	case isWeekly(cronExpr):
+		s.Repeat = types.StringValue(weekly)
+	case isMonthly(cronExpr):
+		s.Repeat = types.StringValue(monthly)
+	default:
+		s.Repeat = types.StringValue(empty)
+	}
+
+	return nil
 }
