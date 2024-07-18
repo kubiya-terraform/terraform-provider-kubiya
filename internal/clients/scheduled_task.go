@@ -38,22 +38,22 @@ type createScheduledTaskRequest struct {
 }
 
 func toDailyCron(t time.Time) string {
-	const layout = "0 %d %d * * *"
+	const layout = "%d %d * * * *"
 	return fmt.Sprintf(layout, t.Minute(), t.Hour())
 }
 
 func toHourlyCron(t time.Time) string {
-	const layout = "0 %d * * * *"
+	const layout = "%d * * * * *"
 	return fmt.Sprintf(layout, t.Minute())
 }
 
 func toWeeklyCron(t time.Time) string {
-	const layout = "0 %d %d * * %d"
+	const layout = "%d %d * * %d *"
 	return fmt.Sprintf(layout, t.Minute(), t.Hour(), int(t.Weekday()))
 }
 
 func toMonthlyCron(t time.Time) string {
-	const layout = "0 %d %d %d * *"
+	const layout = "%d %d %d * * *"
 	return fmt.Sprintf(layout, t.Minute(), t.Hour(), t.Day())
 }
 
@@ -72,6 +72,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		Id:                types.StringValue(a.Id),
 		UUID:              types.StringValue(a.UUID),
 		Email:             types.StringValue(a.Email),
+		Repeat:            types.StringValue(""),
 		Status:            types.StringValue(a.Status),
 		TaskType:          types.StringValue(a.TaskType),
 		ChannelId:         types.StringValue(a.ChannelId),
@@ -90,7 +91,6 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 							err = errors.Join(err, e)
 							continue
 						}
-						result.Description = types.StringValue(item.(string))
 					}
 				}
 			}
@@ -154,7 +154,7 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 	}
 	result.ScheduledTime, err = parseTime(scheduledTime, "scheduled_time", err)
 
-	if !result.ScheduledTime.IsZero() && err != nil {
+	if !result.ScheduledTime.IsZero() && err == nil {
 		switch e.Repeat.ValueString() {
 		case daily:
 			result.CronString = toDailyCron(result.ScheduledTime)
