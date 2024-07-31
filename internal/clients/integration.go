@@ -27,6 +27,7 @@ type (
 		Name        string      `json:"name"`
 		Configs     []configApi `json:"configs"`
 		AuthType    string      `json:"auth_type"`
+		ManagedBy   string      `json:"managed_by"`
 		Description string      `json:"description"`
 		Type        string      `json:"integration_type"`
 	}
@@ -199,6 +200,7 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 			return nil, err
 		}
 
+		data.ManagedBy = "terraform"
 		body, err := toJson(data)
 		if err != nil {
 			return nil, err

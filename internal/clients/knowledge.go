@@ -24,6 +24,7 @@ type knowledge struct {
 	SupportedAgents       []string `json:"supported_agents"`
 	SupportedAgentsGroups []string `json:"supported_agents_groups"`
 	Id                    string   `json:"uuid"`
+	ManagedBy             string   `json:"managed_by"`
 }
 
 func toKnowledge(a *entities.KnowledgeModel, cs *state) (*knowledge, error) {
@@ -224,6 +225,7 @@ func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 			return nil, err
 		}
 
+		data.ManagedBy = "terraform"
 		body, err := toJson(data)
 		if err != nil {
 			return nil, err
