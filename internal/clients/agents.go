@@ -20,10 +20,11 @@ type task struct {
 }
 
 type agent struct {
-	Name  string `json:"name"`
-	Uuid  string `json:"uuid"`
-	Email string `json:"email,omitempty"`
-	Image string `json:"image,omitempty"`
+	Name      string `json:"name"`
+	Uuid      string `json:"uuid"`
+	ManagedBy string `json:"managed_by"`
+	Email     string `json:"email,omitempty"`
+	Image     string `json:"image,omitempty"`
 
 	Links        []string  `json:"links"`
 	Tools        []string  `json:"tools"`
@@ -393,6 +394,7 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 		if err != nil {
 			return nil, err
 		}
+		data.ManagedBy = "terraform"
 
 		body, err := toJson(data)
 		if err != nil {
