@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -131,4 +132,18 @@ func toStringMap(m types.Map) map[string]string {
 	}
 
 	return result
+}
+
+func managedBy() (string, string) {
+	const (
+		empty       = ""
+		byTask      = "task"
+		env         = "TASK_UUID"
+		byTerraform = "terraform"
+	)
+	if taskId := os.Getenv(env); len(taskId) >= 1 {
+		return taskId, byTask
+	}
+
+	return empty, byTerraform
 }
