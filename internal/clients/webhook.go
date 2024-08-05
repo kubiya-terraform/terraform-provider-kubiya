@@ -24,6 +24,7 @@ type (
 		CreatedBy     string         `json:"created_by"`
 		UpdatedAt     time.Time      `json:"updated_at"`
 		WebhookUrl    string         `json:"webhook_url"`
+		TaskId        string         `json:"task_id"`
 		ManagedBy     string         `json:"managed_by"`
 		Communication *communication `json:"communication"`
 	}
@@ -223,7 +224,7 @@ func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookMode
 		uri := c.uri("/api/v1/event")
 
 		data := toWebhook(entity, cs)
-		data.ManagedBy = "terraform"
+		data.ManagedBy, data.TaskId = managedBy()
 
 		body, err := toJson(data)
 		if err != nil {
