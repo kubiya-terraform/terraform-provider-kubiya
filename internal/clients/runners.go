@@ -11,10 +11,12 @@ import (
 )
 
 type runner struct {
-	Key     string `json:"key"`
-	Url     string `json:"url"`
-	Name    string `json:"name"`
-	Subject string `json:"subject"`
+	Key       string `json:"key"`
+	Url       string `json:"url"`
+	Name      string `json:"name"`
+	Subject   string `json:"subject"`
+	TaskId    string `json:"task_id"`
+	ManagedBy string `json:"managed_by"`
 }
 
 func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) error {
@@ -72,7 +74,17 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 		path := entity.Path.ValueString()
 		name := entity.Name.ValueString()
 
-		resp, err := c.create(ctx, c.uri(format(uri, name)), nil)
+		data := &runner{}
+		data.ManagedBy, data.TaskId = managedBy()
+
+		body, err := toJson(data)
+		if err != nil {
+			return nil, err
+		}
+
+		reqUri := c.uri(format(uri, name))
+
+		resp, err := c.create(ctx, reqUri, body)
 		if err != nil {
 			return nil, err
 		}
