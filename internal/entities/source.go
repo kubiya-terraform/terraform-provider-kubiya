@@ -17,20 +17,21 @@ type SourceModel struct {
 func SourceSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			// Computed
-			"id": schema.StringAttribute{
-				Computed:            true,
-				Description:         "The ID of the source",
-				MarkdownDescription: "The unique identifier of the source",
-			},
 			// Required
 			"url": schema.StringAttribute{
 				Required:            true,
 				Description:         "url path for source",
 				MarkdownDescription: "url path for source",
 			},
+
+			// Computed
+			"id": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The ID of the source",
+				MarkdownDescription: "The unique identifier of the source",
+			},
 			"name": schema.StringAttribute{
-				Required:            true,
+				Computed:            true,
 				Description:         "The name of the source",
 				MarkdownDescription: "The descriptive name of the source",
 			},
