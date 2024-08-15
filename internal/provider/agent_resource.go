@@ -159,6 +159,9 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.Secrets.IsNull() && !plan.Secrets.IsUnknown() {
 		updatedState.Secrets = plan.Secrets
 	}
+	if !plan.Sources.IsNull() && !plan.Sources.IsUnknown() {
+		updatedState.Sources = plan.Sources
+	}
 	if !plan.Variables.IsNull() && !plan.Variables.IsUnknown() {
 		updatedState.Variables = plan.Variables
 	}

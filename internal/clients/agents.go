@@ -30,6 +30,7 @@ type agent struct {
 	Links        []string  `json:"links"`
 	Tools        []string  `json:"tools"`
 	Tasks        []task    `json:"tasks"`
+	Sources      []string  `json:"sources"`
 	Secrets      []string  `json:"secrets"`
 	Starters     []starter `json:"starters"`
 	Integrations []string  `json:"integrations"`
@@ -83,6 +84,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Tools:        make([]string, 0),
 		Users:        make([]string, 0),
 		Groups:       make([]string, 0),
+		Sources:      make([]string, 0),
 		Secrets:      make([]string, 0),
 		Integrations: make([]string, 0),
 		Variables:    make(map[string]string),
@@ -185,6 +187,13 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			if !found {
 				err = errors.Join(err, fmt.Errorf("secret \"%s\" don't exist", v))
 			}
+		}
+	}
+
+	for _, v := range a.Sources.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			str := v.String()
+			result.Sources = append(result.Sources, strings.ReplaceAll(str, "\"", ""))
 		}
 	}
 
@@ -298,6 +307,8 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Groups = toListStringType(groupList, err)
 
 	result.Secrets = toListStringType(a.Secrets, err)
+
+	result.Sources = toListStringType(a.Sources, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
 
