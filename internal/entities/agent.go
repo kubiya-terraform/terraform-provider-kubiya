@@ -36,6 +36,7 @@ type AgentModel struct {
 	Tasks        []TaskModel    `tfsdk:"tasks"`
 	Users        types.List     `tfsdk:"users"`
 	Groups       types.List     `tfsdk:"groups"`
+	Sources      types.List     `tfsdk:"sources"`
 	Secrets      types.List     `tfsdk:"secrets"`
 	Starters     []StarterModel `tfsdk:"starters"`
 	Tools        types.List     `tfsdk:"tool_sources"`
@@ -166,6 +167,13 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of secrets associated with the agent",
 				MarkdownDescription: "An array of secrets related to the agent",
+			},
+			"sources": schema.ListAttribute{
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				Description:         "A list of tools to be consumed with agents",
+				MarkdownDescription: "An array of URL's to pull tools from",
 			},
 			"starters": schema.ListAttribute{
 				Optional: true,
