@@ -30,6 +30,7 @@ func (p *kubiyaProvider) Resources(_ context.Context) []func() resource.Resource
 	return []func() resource.Resource{
 		NewAgentResource,
 		NewRunnerResource,
+		NewSourceResource,
 		NewWebhookResource,
 		NewKnowledgeResource,
 		NewIntegrationResource,
