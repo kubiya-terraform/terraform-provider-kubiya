@@ -134,6 +134,31 @@ func toStringMap(m types.Map) map[string]string {
 	return result
 }
 
+func getTaskId() string {
+	const (
+		empty = ""
+		env   = "TASK_UUID"
+	)
+	if taskId := os.Getenv(env); len(taskId) >= 1 {
+		return taskId
+	}
+
+	return empty
+}
+
+func getManagedBy() string {
+	const (
+		byTask      = "task"
+		env         = "TASK_UUID"
+		byTerraform = "terraform"
+	)
+	if taskId := os.Getenv(env); len(taskId) >= 1 {
+		return byTask
+	}
+
+	return byTerraform
+}
+
 func managedBy() (string, string) {
 	const (
 		empty       = ""

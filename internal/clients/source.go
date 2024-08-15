@@ -12,18 +12,11 @@ import (
 )
 
 type source struct {
-	Url  string `json:"url"`
-	Id   string `json:"uuid"`
-	Name string `json:"name"`
-}
-
-func newSource(body io.Reader) (*source, error) {
-	var result source
-	if err := json.NewDecoder(body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	Url       string `json:"url"`
+	Id        string `json:"uuid"`
+	Name      string `json:"name"`
+	TaskId    string `json:"task_id"`
+	ManagedBy string `json:"managed_by"`
 }
 
 func toSource(e *entities.SourceModel) *source {
@@ -34,6 +27,15 @@ func toSource(e *entities.SourceModel) *source {
 	}
 
 	return result
+}
+
+func newSource(body io.Reader) (*source, error) {
+	var result source
+	if err := json.NewDecoder(body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 func fromSource(a *source) *entities.SourceModel {
@@ -77,6 +79,8 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
 	if e != nil {
 		data := toSource(e)
+		data.TaskId = getTaskId()
+		data.ManagedBy = getManagedBy()
 
 		body, err := toJson(data)
 		if err != nil {
