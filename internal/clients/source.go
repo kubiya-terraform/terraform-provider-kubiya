@@ -78,9 +78,11 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
 	if e != nil {
-		data := toSource(e)
-		data.TaskId = getTaskId()
-		data.ManagedBy = getManagedBy()
+		data := &source{
+			TaskId:    getTaskId(),
+			ManagedBy: getManagedBy(),
+			Url:       e.Url.ValueString(),
+		}
 
 		body, err := toJson(data)
 		if err != nil {
