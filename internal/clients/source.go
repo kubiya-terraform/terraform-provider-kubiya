@@ -31,6 +31,15 @@ func newSource(body io.Reader) (*source, error) {
 	return &result, nil
 }
 
+func newSources(body io.Reader) ([]*source, error) {
+	var result []*source
+	if err := json.NewDecoder(body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func fromSource(a *source) *entities.SourceModel {
 	result := &entities.SourceModel{
 		Url:            types.StringValue(a.Url),
@@ -74,6 +83,30 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
 	if e != nil {
+		uri := c.uri("/api/v1/sources")
+
+		resp, err := c.read(ctx, uri)
+		if err != nil {
+			return nil, err
+		}
+
+		results, err := newSources(resp)
+		if err != nil {
+			return nil, err
+		}
+
+		exist := false
+		srUrl := e.Url.ValueString()
+		for _, sr := range results {
+			if exist = sr.Url == srUrl; exist {
+				break
+			}
+		}
+
+		if exist {
+			return nil, eformat("source already exists")
+		}
+
 		data := &source{
 			TaskId:    getTaskId(),
 			ManagedBy: getManagedBy(),
@@ -85,19 +118,30 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
-		uri := c.uri("/api/v1/sources")
-
-		resp, err := c.create(ctx, uri, body)
+		_, err = c.create(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := newSource(resp)
+		resp, err = c.read(ctx, uri)
 		if err != nil {
 			return nil, err
 		}
 
-		return fromSource(result), nil
+		results, err = newSources(resp)
+		if err != nil {
+			return nil, err
+		}
+
+		var result *entities.SourceModel
+		for _, sr := range results {
+			if sr.Url == srUrl {
+				result = fromSource(sr)
+				break
+			}
+		}
+
+		return result, nil
 	}
 
 	return nil, fmt.Errorf("param entity (*entities.SourceModel) is nil")
