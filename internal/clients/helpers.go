@@ -122,25 +122,13 @@ func toMapType(items map[string]string, err error) types.Map {
 	return result
 }
 
-func toStringMap(m types.Map) map[string]string {
-	n := ""
-	o := "\""
-
-	var result map[string]string
-	for k, v := range m.Elements() {
-		result[k] = clean(v.String(), o, n)
-	}
-
-	return result
-}
-
 func getTaskId() string {
 	const (
 		empty = ""
 		env   = "TASK_UUID"
 	)
-	if taskId := os.Getenv(env); len(taskId) >= 1 {
-		return taskId
+	if value := os.Getenv(env); value != "" {
+		return value
 	}
 
 	return empty
@@ -148,12 +136,11 @@ func getTaskId() string {
 
 func getManagedBy() string {
 	const (
-		byTask      = "task"
-		env         = "TASK_UUID"
 		byTerraform = "terraform"
+		env         = "MANAGED_BY"
 	)
-	if taskId := os.Getenv(env); len(taskId) >= 1 {
-		return byTask
+	if value := os.Getenv(env); value != "" {
+		return value
 	}
 
 	return byTerraform
@@ -161,14 +148,23 @@ func getManagedBy() string {
 
 func managedBy() (string, string) {
 	const (
-		empty       = ""
-		byTask      = "task"
-		env         = "TASK_UUID"
-		byTerraform = "terraform"
+		defaultId = ""
+		defaultBy = "terraform"
+
+		taskIdEnv    = "TASK_UUID"
+		managedByEnv = "MANAGED_BY"
 	)
-	if taskId := os.Getenv(env); len(taskId) >= 1 {
-		return taskId, byTask
+
+	id := defaultId
+	by := defaultBy
+
+	if value := os.Getenv(taskIdEnv); value != "" {
+		id = value
 	}
 
-	return empty, byTerraform
+	if value := os.Getenv(managedByEnv); value != "" {
+		by = value
+	}
+
+	return by, id
 }
