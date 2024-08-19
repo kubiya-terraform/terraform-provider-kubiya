@@ -28,15 +28,6 @@ func newSource(body io.Reader) (*source, error) {
 	return &result, nil
 }
 
-func newSources(body io.Reader) ([]*source, error) {
-	var result []*source
-	if err := json.NewDecoder(body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
 func fromSource(a *source) *entities.SourceModel {
 	result := &entities.SourceModel{
 		Url:  types.StringValue(a.Url),
@@ -45,6 +36,15 @@ func fromSource(a *source) *entities.SourceModel {
 	}
 
 	return result
+}
+
+func newSources(body io.Reader) ([]*source, error) {
+	var result []*source
+	if err := json.NewDecoder(body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (c *Client) DeleteSource(ctx context.Context, e *entities.SourceModel) error {
@@ -112,30 +112,17 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
-		_, err = c.create(ctx, uri, body)
+		resp, err = c.create(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}
 
-		resp, err = c.read(ctx, uri)
+		result, err := newSource(resp)
 		if err != nil {
 			return nil, err
 		}
 
-		results, err = newSources(resp)
-		if err != nil {
-			return nil, err
-		}
-
-		var result *entities.SourceModel
-		for _, sr := range results {
-			if sr.Url == srUrl {
-				result = fromSource(sr)
-				break
-			}
-		}
-
-		return result, nil
+		return fromSource(result), nil
 	}
 
 	return nil, fmt.Errorf("param entity (*entities.SourceModel) is nil")
