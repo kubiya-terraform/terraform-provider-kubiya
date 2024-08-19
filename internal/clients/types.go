@@ -47,6 +47,7 @@ type state struct {
 	modelList       []string
 	runnerList      []*runner
 	secretList      []*secret
+	sourceList      []*source
 	webhookList     []*webhook
 	knowledgeList   []*knowledge
 	integrationList []*integration
