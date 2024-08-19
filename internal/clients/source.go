@@ -12,14 +12,11 @@ import (
 )
 
 type source struct {
-	Url            string `json:"url"`
-	Id             string `json:"uuid"`
-	Name           string `json:"name"`
-	TaskId         string `json:"task_id"`
-	ManagedBy      string `json:"managed_by"`
-	ToolsCount     int64  `json:"connected_tools_count"`
-	AgentsCount    int64  `json:"connected_agents_count"`
-	WorkflowsCount int64  `json:"connected_workflows_count"`
+	Url       string `json:"url"`
+	Id        string `json:"uuid"`
+	Name      string `json:"name"`
+	TaskId    string `json:"task_id"`
+	ManagedBy string `json:"managed_by"`
 }
 
 func newSource(body io.Reader) (*source, error) {
@@ -42,12 +39,9 @@ func newSources(body io.Reader) ([]*source, error) {
 
 func fromSource(a *source) *entities.SourceModel {
 	result := &entities.SourceModel{
-		Url:            types.StringValue(a.Url),
-		Id:             types.StringValue(a.Id),
-		Name:           types.StringValue(a.Name),
-		ToolsCount:     types.Int64Value(a.ToolsCount),
-		AgentsCount:    types.Int64Value(a.AgentsCount),
-		WorkflowsCount: types.Int64Value(a.WorkflowsCount),
+		Url:  types.StringValue(a.Url),
+		Id:   types.StringValue(a.Id),
+		Name: types.StringValue(a.Name),
 	}
 
 	return result
