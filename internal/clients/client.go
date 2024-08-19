@@ -84,6 +84,12 @@ func (c *Client) state() (*state, error) {
 		currentState.secretList = append(make([]*secret, 0), secrets...)
 	}
 
+	if sources, e := c.sources(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.sourceList = append(make([]*source, 0), sources...)
+	}
+
 	if webhooks, e := c.webhooks(); e != nil {
 		err = errors.Join(err, e)
 	} else {
@@ -231,6 +237,22 @@ func (c *Client) secrets() ([]*secret, error) {
 	err = json.NewDecoder(resp).Decode(&result)
 
 	return result, err
+}
+
+func (c *Client) sources() ([]*source, error) {
+	const (
+		path = "/api/v1/sources"
+	)
+
+	uri := c.uri(path)
+	ctx := context.Background()
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		return nil, err
+	}
+
+	return newSources(resp)
 }
 
 func (c *Client) webhooks() ([]*webhook, error) {

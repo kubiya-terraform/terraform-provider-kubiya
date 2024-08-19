@@ -192,8 +192,18 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 	for _, v := range a.Sources.Elements() {
 		if !v.IsNull() && !v.IsUnknown() {
+			found := false
 			str := v.String()
-			result.Sources = append(result.Sources, strings.ReplaceAll(str, "\"", ""))
+			item := strings.ReplaceAll(str, "\"", "")
+			for _, i := range cs.sourceList {
+				if found = equal(i.Name, item); found {
+					result.Groups = append(result.Groups, i.Id)
+					break
+				}
+			}
+			if !found {
+				err = errors.Join(err, fmt.Errorf("source \"%s\" don't exist", v))
+			}
 		}
 	}
 
@@ -241,6 +251,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 
 	usersList := make([]string, 0)
 	groupList := make([]string, 0)
+	sourceList := make([]string, 0)
 
 	if a.Metadata != nil {
 		for _, u := range cs.userList {
@@ -296,6 +307,15 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 	}
 
+	for _, t := range a.Sources {
+		for _, s := range cs.sourceList {
+			if equal(s.Id, t) {
+				sourceList = append(sourceList, s.Name)
+				break
+			}
+		}
+	}
+
 	result.Tools = toListStringType(a.Tools, err)
 
 	result.Links = toListStringType(a.Links, err)
@@ -308,7 +328,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 
 	result.Secrets = toListStringType(a.Secrets, err)
 
-	result.Sources = toListStringType(a.Sources, err)
+	result.Sources = toListStringType(sourceList, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
 
