@@ -197,7 +197,7 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 			item := strings.ReplaceAll(str, "\"", "")
 			for _, i := range cs.sourceList {
 				if found = equal(i.Name, item); found {
-					result.Groups = append(result.Groups, i.Id)
+					result.Sources = append(result.Sources, i.Id)
 					break
 				}
 			}
