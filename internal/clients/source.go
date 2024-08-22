@@ -79,28 +79,6 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 	if e != nil {
 		uri := c.uri("/api/v1/sources")
 
-		resp, err := c.read(ctx, uri)
-		if err != nil {
-			return nil, err
-		}
-
-		results, err := newSources(resp)
-		if err != nil {
-			return nil, err
-		}
-
-		exist := false
-		srUrl := e.Url.ValueString()
-		for _, sr := range results {
-			if exist = sr.Url == srUrl; exist {
-				break
-			}
-		}
-
-		if exist {
-			return nil, eformat("source already exists")
-		}
-
 		data := &source{
 			TaskId:    getTaskId(),
 			ManagedBy: getManagedBy(),
