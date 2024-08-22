@@ -90,7 +90,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
-		resp, err = c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}
