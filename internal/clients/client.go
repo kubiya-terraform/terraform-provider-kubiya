@@ -317,6 +317,7 @@ func (c *Client) integrations() ([]*integration, error) {
 
 	result := []*integration{
 		{Name: "slack"},
+		{Name: "kubernetes"},
 	}
 
 	if val, ok := tmp[managed]; ok {
