@@ -145,6 +145,8 @@ func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationM
 			return err
 		}
 
+		data.ManagedBy, data.TaskId = managedBy()
+
 		body, err := toJson(data)
 		if err != nil {
 			return err

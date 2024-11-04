@@ -363,6 +363,8 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 			return err
 		}
 
+		data.ManagedBy, data.TaskId = managedBy()
+
 		body, err := toJson(data)
 		if err != nil {
 			return err
