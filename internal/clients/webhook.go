@@ -191,7 +191,10 @@ func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookMode
 
 		uri := c.uri(format(path, id))
 
-		body, err := toJson(toWebhook(entity, cs))
+		data := toWebhook(entity, cs)
+		data.ManagedBy, data.TaskId = managedBy()
+
+		body, err := toJson(data)
 		if err != nil {
 			return err
 		}

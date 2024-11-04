@@ -192,6 +192,8 @@ func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 			return err
 		}
 
+		data.ManagedBy, data.TaskId = managedBy()
+
 		body, err := toJson(data)
 		if err != nil {
 			return err
