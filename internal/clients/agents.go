@@ -219,14 +219,6 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 				}
 			}
 
-			if strings.Contains(item, "slack") {
-				result.Integrations = append(result.Integrations, "slack")
-				continue
-			} else if strings.Contains(item, "kubernetes") {
-				result.Integrations = append(result.Integrations, "kubernetes")
-				continue
-			}
-
 			if !found {
 				err = errors.Join(err, fmt.Errorf("integration \"%s\" don't exist", v))
 			}
