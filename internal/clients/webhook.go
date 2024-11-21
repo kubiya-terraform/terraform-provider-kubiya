@@ -111,6 +111,7 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		Prompt:      types.StringValue(w.Prompt),
 		Agent:       types.StringValue(agentName),
 		Destination: types.StringValue(destination),
+		Url:         types.StringValue(w.WebhookUrl),
 	}
 
 	return wh
