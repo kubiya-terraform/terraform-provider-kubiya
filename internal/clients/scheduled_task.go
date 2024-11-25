@@ -18,6 +18,7 @@ type scheduledTask struct {
 	UUID              string                 `json:"task_uuid"`
 	Email             string                 `json:"user_email,omitempty"`
 	ChannelId         string                 `json:"channel_id,omitempty"`
+	ChannelName       string                 `json:"channel_name,omitempty"`
 	Description       string                 `json:"task_description,omitempty"`
 	Agent             string                 `json:"agent,omitempty"`
 	TaskType          string                 `json:"task_type,omitempty"`
@@ -75,7 +76,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		Repeat:            types.StringValue(""),
 		Status:            types.StringValue(a.Status),
 		TaskType:          types.StringValue(a.TaskType),
-		ChannelId:         types.StringValue(a.ChannelId),
+		ChannelId:         types.StringValue(a.ChannelName),
 		ScheduledTime:     types.StringValue(a.ScheduledTime),
 		NextScheduledTime: types.StringValue(a.NextScheduledTime),
 	}
