@@ -20,13 +20,11 @@ var _ provider.Provider = (*kubiyaProvider)(nil)
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &kubiyaProvider{
-			version: version,
-		}
+		return &kubiyaProvider{version: version}
 	}
 }
 
-func (p *kubiyaProvider) Resources(_ context.Context) []func() resource.Resource {
+func (p *kubiyaProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewAgentResource,
 		NewRunnerResource,
@@ -38,7 +36,7 @@ func (p *kubiyaProvider) Resources(_ context.Context) []func() resource.Resource
 	}
 }
 
-func (p *kubiyaProvider) DataSources(_ context.Context) []func() datasource.DataSource {
+func (p *kubiyaProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{}
 }
 
@@ -52,26 +50,34 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 
 func (p *kubiyaProvider) Configure(_ context.Context, _ provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	const (
-		env     = "KUBIYA_API_KEY"
-		summery = "Kubiya API Key Not Configured"
-		details = "Please set the Kubiya API Key using the environment variable 'KUBIYA_API_KEY'. Use the command below:\n> export KUBIYA_API_KEY=YOUR_API_KEY"
+		apiKeyEnvVar         = "KUBIYA_API_KEY"
+		envKeyEnvVar         = "KUBIYA_ENV" // New environment variable for environment selection
+		missingAPIKey        = "Kubiya API Key Not Configured"
+		missingAPIKeyDetails = "Please set the Kubiya API Key using the environment variable 'KUBIYA_API_KEY'. " +
+			"Use the command below:\n> export KUBIYA_API_KEY=YOUR_API_KEY"
 	)
 
-	apiKey := os.Getenv(env)
-	if len(apiKey) <= 0 {
-		resp.Diagnostics.AddError(summery, details)
+	apiKey := os.Getenv(apiKeyEnvVar)
+	if apiKey == "" {
+		resp.Diagnostics.AddError(missingAPIKey, missingAPIKeyDetails)
 		return
 	}
 
-	// Create a new Kubiya client using the configuration values
-	client, err := clients.New(apiKey)
+	// Fetch the environment or set to default
+	env := os.Getenv(envKeyEnvVar)
+	if env == "" {
+		env = "production"
+	}
+	resp.Diagnostics.AddWarning("Environment Selected", "The provider is configured for environment: "+env)
+
+	// Create a new Kubiya client using the API key and environment
+	client, err := clients.New(apiKey, env)
 	if err != nil {
-		resp.Diagnostics.AddError(summery, details)
+		resp.Diagnostics.AddError("Failed to Create Kubiya Client", "An error occurred while creating the Kubiya client: "+err.Error())
 		return
 	}
 
-	// Make the Kubiya client available during DataSource and Resource
-	// type Configure methods.
+	// Attach the client to be used by resources and data sources
 	resp.ResourceData = client
 	resp.DataSourceData = client
 }
