@@ -15,9 +15,17 @@ type Client struct {
 	client  *http.Client
 }
 
+<<<<<<< HEAD
 func New(key, env string) (*Client, error) {
 	if len(key) == 0 {
 		return nil, eformat("ApiKey is missing or empty")
+=======
+func New(uk string) (*Client, error) {
+	if len(uk) >= 1 {
+		client := &http.Client{}
+		host := "https://api-staging.dev.kubiya.ai"
+		return &Client{userKey: uk, client: client, host: host}, nil
+>>>>>>> 12e1591 (tf apply)
 	}
 	client := &http.Client{}
 	host := ""
