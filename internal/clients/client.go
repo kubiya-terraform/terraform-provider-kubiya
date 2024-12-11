@@ -25,7 +25,7 @@ func New(key, env string) (*Client, error) {
 	case "production":
 		host = "https://api.kubiya.ai"
 	case "staging":
-		host = "https:/api-staging.dev.kubiya.ai"
+		host = "https://api-staging.dev.kubiya.ai"
 	}
 	return &Client{userKey: key, client: client, host: host}, nil
 
