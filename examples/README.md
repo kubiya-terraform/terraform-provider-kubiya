@@ -8,6 +8,12 @@ This guide explains how to test the `main.tf` Terraform configuration located in
 - [Go](https://golang.org/doc/install) >= 1.19
 - Locally built Terraform provider
 
+Additional Configurations
+```
+export GOBIN=<go bin value in your local env> (e.g /Users/michael.bauer/go/bin)
+export KUBIYA_ENV=staging
+```
+
 ## Setup
 
 ### 1. Build the Provider
@@ -23,13 +29,14 @@ go build -o terraform-provider-example
 ### 2. Configure Terraform to Use Local Provider
 
 Edit or create the `~/.terraformrc` file to point to your local provider:
-
+```
 provider_installation {
   dev_overrides {
     "local/provider/example" = "/Users/avi.rosenberg/projects/terraform-provider-kubiya"
   }
   direct {}
 }
+```
 
 replace the path with the relvant path to your provider.
 
