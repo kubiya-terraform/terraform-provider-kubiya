@@ -43,7 +43,7 @@ output "output" {
 }
 ```
 
-2. Create a ~/.terraformrc filem pay attention to fill dev_overrides value:
+2. Create a ~/.terraformrc file, pay attention to fill dev_overrides value:
 ```
 provider_installation {
 
