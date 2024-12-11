@@ -1,6 +1,6 @@
 ## Kubiya Terraform provider
 
-Manage your kubiya cloud with our most extensive kubiya provider.
+Manage your kubiya cloud with our most enhanced kubiya provider.
 
 
 ## For local Development
