@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"io"
 	"strings"
-
-	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
 )
@@ -25,6 +24,11 @@ func newSource(body io.Reader) (*source, error) {
 	var result source
 	if err := json.NewDecoder(body).Decode(&result); err != nil {
 		return nil, err
+	}
+
+	for key, value := range result.DynamicConfig {
+		result.DynamicConfig[key] = strings.ReplaceAll(value, "\"", "")
+		result.DynamicConfig[key] = strings.ReplaceAll(value, "\\n", "\n")
 	}
 
 	return &result, nil
