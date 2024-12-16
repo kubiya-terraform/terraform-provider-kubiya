@@ -68,7 +68,6 @@ func (p *kubiyaProvider) Configure(_ context.Context, _ provider.ConfigureReques
 	if env == "" {
 		env = "production"
 	}
-	resp.Diagnostics.AddWarning("Environment Selected", "The provider is configured for environment: "+env)
 
 	// Create a new Kubiya client using the API key and environment
 	client, err := clients.New(apiKey, env)
