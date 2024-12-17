@@ -13,6 +13,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+const errorLayout = "[%s] %s. Error: %s"
+
 func closeBody(b io.ReadCloser) {
 	_ = b.Close()
 }
@@ -75,10 +77,6 @@ func equal(str, term string) bool {
 }
 
 func toListStringType(items []string, err error) types.List {
-	const (
-		errorLayout = "[%s] %s. Error: %s"
-	)
-
 	var elements []attr.Value
 	for _, item := range items {
 		elements = append(elements, types.StringValue(item))
@@ -98,10 +96,6 @@ func toListStringType(items []string, err error) types.List {
 }
 
 func toMapType(items map[string]string, err error) types.Map {
-	const (
-		errorLayout = "[%s] %s. Error: %s"
-	)
-
 	elements := make(map[string]attr.Value)
 	for key, value := range items {
 		if len(key) >= 1 {

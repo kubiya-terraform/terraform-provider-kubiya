@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"io"
-	"strings"
-
+	"strconv"
 	"terraform-provider-kubiya/internal/entities"
 )
 
@@ -26,9 +25,13 @@ func newSource(body io.Reader) (*source, error) {
 		return nil, err
 	}
 
+	fmt.Println(result.DynamicConfig)
 	for key, value := range result.DynamicConfig {
-		result.DynamicConfig[key] = strings.ReplaceAll(value, "\"", "")
-		result.DynamicConfig[key] = strings.ReplaceAll(value, "\\n", "\n")
+		cleanedString, err := strconv.Unquote(value)
+		if err != nil {
+			return nil, err
+		}
+		result.DynamicConfig[key] = cleanedString
 	}
 
 	return &result, nil
@@ -95,7 +98,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 		}
 
 		for key, value := range e.DynamicConfig.Elements() {
-			data.DynamicConfig[key] = strings.ReplaceAll(value.String(), "\"", "")
+			data.DynamicConfig[key] = value.String()
 		}
 
 		body, err := toJson(data)
