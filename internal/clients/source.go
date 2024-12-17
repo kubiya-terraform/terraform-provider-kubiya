@@ -98,11 +98,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 		}
 
 		for key, value := range e.DynamicConfig.Elements() {
-			cleanedString, err := strconv.Unquote(value.String())
-			if err != nil {
-				return nil, err
-			}
-			data.DynamicConfig[key] = cleanedString
+			data.DynamicConfig[key] = value.String()
 		}
 
 		body, err := toJson(data)
