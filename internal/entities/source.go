@@ -39,7 +39,7 @@ func SourceSchema() schema.Schema {
 			"dynamic_config": schema.MapAttribute{
 				Computed:            true,
 				Optional:            true,
-				ElementType:         types.DynamicType,
+				ElementType:         types.StringType,
 				Description:         "The dynamic configuration of the source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the source",
 			},

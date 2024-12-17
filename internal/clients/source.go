@@ -6,22 +6,29 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"io"
+	"strings"
+
 	"terraform-provider-kubiya/internal/entities"
 )
 
 type source struct {
-	Url           string         `json:"url"`
-	Id            string         `json:"uuid"`
-	Name          string         `json:"name"`
-	TaskId        string         `json:"task_id"`
-	ManagedBy     string         `json:"managed_by"`
-	DynamicConfig map[string]any `json:"dynamic_config"`
+	Url           string            `json:"url"`
+	Id            string            `json:"uuid"`
+	Name          string            `json:"name"`
+	TaskId        string            `json:"task_id"`
+	ManagedBy     string            `json:"managed_by"`
+	DynamicConfig map[string]string `json:"dynamic_config"`
 }
 
 func newSource(body io.Reader) (*source, error) {
 	var result source
 	if err := json.NewDecoder(body).Decode(&result); err != nil {
 		return nil, err
+	}
+
+	for key, value := range result.DynamicConfig {
+		result.DynamicConfig[key] = strings.ReplaceAll(value, "\"", "")
+		result.DynamicConfig[key] = strings.ReplaceAll(value, "\\n", "\n")
 	}
 
 	return &result, nil
@@ -33,13 +40,8 @@ func fromSource(a *source) (*entities.SourceModel, error) {
 		Id:   types.StringValue(a.Id),
 		Name: types.StringValue(a.Name),
 	}
-
-	dynamicConfig, err := convertToTypesMap(a.DynamicConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	result.DynamicConfig = dynamicConfig
+	var err error
+	result.DynamicConfig = toMapType(a.DynamicConfig, err)
 
 	return result, err
 }
@@ -85,16 +87,15 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 	if e != nil {
 		uri := c.uri("/api/v1/sources")
 
-		DynamicConfig, err := processDynamicConfig(e.DynamicConfig)
-		if err != nil {
-			return nil, err
-		}
-
 		data := &source{
 			TaskId:        getTaskId(),
 			ManagedBy:     getManagedBy(),
 			Url:           e.Url.ValueString(),
-			DynamicConfig: DynamicConfig,
+			DynamicConfig: make(map[string]string),
+		}
+
+		for key, value := range e.DynamicConfig.Elements() {
+			data.DynamicConfig[key] = strings.ReplaceAll(value.String(), "\"", "")
 		}
 
 		body, err := toJson(data)
