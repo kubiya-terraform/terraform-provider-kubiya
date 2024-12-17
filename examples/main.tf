@@ -13,7 +13,8 @@ provider "kubiya" {
 }
 
 resource "kubiya_scheduled_task" "example" {
-  repeat         = "" // Optional. Allowed values: hourly, daily, weekly, monthly. Leaving this value empty or omitting it will cause the task to be executed only once.
+  repeat = ""
+  // Optional. Allowed values: hourly, daily, weekly, monthly. Leaving this value empty or omitting it will cause the task to be executed only once.
   channel_id     = "C082X4R0FL0"
   agent          = "Which Agent should perform the task?"
   scheduled_time = "2024-12-01T05:00:00"
@@ -24,19 +25,52 @@ resource "kubiya_scheduled_task" "example" {
 resource "kubiya_source" "item" {
   url = "https://github.com/finebee/terraform-golden-usecases"
   dynamic_config = {
-    michael = <<EOF
-    key1: value1
-key2:
-  nested_key: nested_value
-list_key:
-  - item1
-  - item2
-  - item3
-EOF
+    s3_configs =   var.s3_configs_json
+    s3_configs_2 =   var.s3_configs_json_2
   }
 }
 
+
+
+variable "s3_configs_json" {
+  description = "List of Kubiya integrations to enable. Supports multiple values. \n For AWS integration, the main account must be provided."
+  type        = string
+  default     = <<-EOT
+    "s3_configs": {
+      "Data Lake Read Access": {
+        "name": "data_lake_read 4",
+        "description": "Grants read-only access to data lake buckets",
+        "buckets": [
+          "company-data-lake-prod",
+          "company-data-lake-staging"
+        ],
+        "policy_template": "S3ReadOnlyPolicy",
+        "session_duration": "PT1H"
+      }
+    }
+  EOT
+}
+
+variable "s3_configs_json_2" {
+  description = "List of Kubiya integrations to enable. Supports multiple values. \n For AWS integration, the main account must be provided."
+  type        = string
+  default     = <<-EOT
+    "s3_configs": {
+      "Data Lake Read Access": {
+        "name": "data_lake_read 4",
+        "description": "Grants read-only access to data lake buckets",
+        "buckets": [
+          "company-data-lake-prod",
+          "company-data-lake-staging"
+        ],
+        "policy_template": "S3ReadOnlyPolicy",
+        "session_duration": "PT1H"
+      }
+    }
+  EOT
+}
+
+
 output "output" {
   value = kubiya_source.item
-
 }
