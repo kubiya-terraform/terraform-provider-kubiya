@@ -16,6 +16,7 @@ type source struct {
 	TaskId        string         `json:"task_id"`
 	ManagedBy     string         `json:"managed_by"`
 	DynamicConfig map[string]any `json:"dynamic_config"`
+	Runner        string         `json:"runner"`
 }
 
 func newSource(body io.Reader) (*source, error) {
@@ -30,9 +31,10 @@ func newSource(body io.Reader) (*source, error) {
 
 func fromSource(a *source, dynamicConfigStr types.String) (*entities.SourceModel, error) {
 	result := &entities.SourceModel{
-		Url:  types.StringValue(a.Url),
-		Id:   types.StringValue(a.Id),
-		Name: types.StringValue(a.Name),
+		Url:    types.StringValue(a.Url),
+		Id:     types.StringValue(a.Id),
+		Name:   types.StringValue(a.Name),
+		Runner: types.StringValue(a.Runner),
 	}
 
 	if dynamicConfigStr.ValueString() == "" {
@@ -96,6 +98,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			ManagedBy:     getManagedBy(),
 			Url:           e.Url.ValueString(),
 			DynamicConfig: make(map[string]any),
+			Runner:        e.Runner.ValueString(),
 		}
 
 		if e.DynamicConfig.ValueString() != "" {
@@ -109,7 +112,9 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
-		resp, err := c.create(ctx, uri, body)
+		qps := []string{fmt.Sprintf("runner=%s", data.Runner)}
+
+		resp, err := c.create(ctx, uri, qps, body)
 		if err != nil {
 			return nil, err
 		}
