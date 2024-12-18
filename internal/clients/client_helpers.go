@@ -159,7 +159,7 @@ func (c *Client) delete(ctx context.Context, u string) (io.Reader, error) {
 	return bytes.NewReader(body), err
 }
 
-func (c *Client) create(ctx context.Context, u string, b io.Reader) (io.Reader, error) {
+func (c *Client) create(ctx context.Context, u string, qp []string, b io.Reader) (io.Reader, error) {
 	m := http.MethodPost
 
 	req, err := http.NewRequest(m, u, b)
@@ -169,6 +169,10 @@ func (c *Client) create(ctx context.Context, u string, b io.Reader) (io.Reader, 
 		}
 
 		return nil, eformat("failed to create *http.Request")
+	}
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
 	}
 
 	body, err := c.doWithBody(req.WithContext(ctx))
