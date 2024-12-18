@@ -6,47 +6,47 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"io"
-	"strconv"
 	"terraform-provider-kubiya/internal/entities"
 )
 
 type source struct {
-	Url           string            `json:"url"`
-	Id            string            `json:"uuid"`
-	Name          string            `json:"name"`
-	TaskId        string            `json:"task_id"`
-	ManagedBy     string            `json:"managed_by"`
-	DynamicConfig map[string]string `json:"dynamic_config"`
+	Url           string         `json:"url"`
+	Id            string         `json:"uuid"`
+	Name          string         `json:"name"`
+	TaskId        string         `json:"task_id"`
+	ManagedBy     string         `json:"managed_by"`
+	DynamicConfig map[string]any `json:"dynamic_config"`
 }
 
 func newSource(body io.Reader) (*source, error) {
 	var result source
+
 	if err := json.NewDecoder(body).Decode(&result); err != nil {
 		return nil, err
-	}
-
-	fmt.Println(result.DynamicConfig)
-	for key, value := range result.DynamicConfig {
-		cleanedString, err := strconv.Unquote(value)
-		if err != nil {
-			return nil, err
-		}
-		result.DynamicConfig[key] = cleanedString
 	}
 
 	return &result, nil
 }
 
-func fromSource(a *source) (*entities.SourceModel, error) {
+func fromSource(a *source, dynamicConfigStr types.String) (*entities.SourceModel, error) {
 	result := &entities.SourceModel{
 		Url:  types.StringValue(a.Url),
 		Id:   types.StringValue(a.Id),
 		Name: types.StringValue(a.Name),
 	}
-	var err error
-	result.DynamicConfig = toMapType(a.DynamicConfig, err)
 
-	return result, err
+	if dynamicConfigStr.ValueString() == "" {
+		marshal, err := json.Marshal(a.DynamicConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		result.DynamicConfig = types.StringValue(string(marshal))
+	} else {
+		result.DynamicConfig = dynamicConfigStr
+	}
+
+	return result, nil
 }
 
 func newSources(body io.Reader) ([]*source, error) {
@@ -83,7 +83,7 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 		return nil, err
 	}
 
-	return fromSource(r)
+	return fromSource(r, types.StringValue(""))
 }
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
@@ -94,11 +94,11 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			TaskId:        getTaskId(),
 			ManagedBy:     getManagedBy(),
 			Url:           e.Url.ValueString(),
-			DynamicConfig: make(map[string]string),
+			DynamicConfig: make(map[string]any),
 		}
 
-		for key, value := range e.DynamicConfig.Elements() {
-			data.DynamicConfig[key] = value.String()
+		if err := json.Unmarshal([]byte(e.DynamicConfig.ValueString()), &data.DynamicConfig); err != nil {
+			return nil, err
 		}
 
 		body, err := toJson(data)
@@ -116,7 +116,12 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
-		return fromSource(result)
+		returnSource, err := fromSource(result, e.DynamicConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		return returnSource, nil
 	}
 
 	return nil, fmt.Errorf("param entity (*entities.SourceModel) is nil")
