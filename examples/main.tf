@@ -24,6 +24,10 @@ resource "kubiya_scheduled_task" "example" {
 
 resource "kubiya_source" "item" {
   url = "https://github.com/finebee/terraform-golden-usecases"
+}
+
+resource "kubiya_source" "item_config" {
+  url = "https://github.com/finebee/terraform-golden-usecases"
   dynamic_config = var.s3_configs_json
 }
 
