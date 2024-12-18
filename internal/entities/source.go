@@ -13,6 +13,7 @@ type SourceModel struct {
 	Id            types.String `tfsdk:"id"`
 	Name          types.String `tfsdk:"name"`
 	DynamicConfig types.String `tfsdk:"dynamic_config"`
+	Runner        types.String `tfsdk:"runner"`
 }
 
 func SourceSchema() schema.Schema {
@@ -41,6 +42,12 @@ func SourceSchema() schema.Schema {
 				Optional:            true,
 				Description:         "The dynamic configuration of the source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the source",
+			},
+			"runner": schema.StringAttribute{
+				Computed:            true,
+				Optional:            true,
+				Description:         "The runner name",
+				MarkdownDescription: "The runner name to add the source",
 			},
 		},
 	}

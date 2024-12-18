@@ -237,7 +237,7 @@ func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 
 		uri := c.uri("/api/v1/knowledge")
 
-		resp, err := c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}
