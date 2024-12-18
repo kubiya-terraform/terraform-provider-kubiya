@@ -36,12 +36,13 @@ func fromSource(a *source, dynamicConfigStr types.String) (*entities.SourceModel
 	}
 
 	if dynamicConfigStr.ValueString() == "" {
-		marshal, err := json.Marshal(a.DynamicConfig)
-		if err != nil {
-			return nil, err
+		if len(a.DynamicConfig) >= 1 {
+			marshal, err := json.Marshal(a.DynamicConfig)
+			if err != nil {
+				return nil, err
+			}
+			result.DynamicConfig = types.StringValue(string(marshal))
 		}
-
-		result.DynamicConfig = types.StringValue(string(marshal))
 	} else {
 		result.DynamicConfig = dynamicConfigStr
 	}
@@ -97,8 +98,10 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			DynamicConfig: make(map[string]any),
 		}
 
-		if err := json.Unmarshal([]byte(e.DynamicConfig.ValueString()), &data.DynamicConfig); err != nil {
-			return nil, err
+		if e.DynamicConfig.ValueString() != "" {
+			if err := json.Unmarshal([]byte(e.DynamicConfig.ValueString()), &data.DynamicConfig); err != nil {
+				return nil, err
+			}
 		}
 
 		body, err := toJson(data)
