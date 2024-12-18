@@ -24,10 +24,7 @@ resource "kubiya_scheduled_task" "example" {
 
 resource "kubiya_source" "item" {
   url = "https://github.com/finebee/terraform-golden-usecases"
-  dynamic_config = {
-    s3_configs =   var.s3_configs_json
-    s3_configs_2 =   var.s3_configs_json_2
-  }
+  dynamic_config = var.s3_configs_json
 }
 
 
@@ -36,40 +33,38 @@ variable "s3_configs_json" {
   description = "List of Kubiya integrations to enable. Supports multiple values. \n For AWS integration, the main account must be provided."
   type        = string
   default     = <<-EOT
-    "s3_configs": {
-      "Data Lake Read Access": {
-        "name": "data_lake_read 4",
-        "description": "Grants read-only access to data lake buckets",
-        "buckets": [
-          "company-data-lake-prod",
-          "company-data-lake-staging"
-        ],
-        "policy_template": "S3ReadOnlyPolicy",
-        "session_duration": "PT1H"
-      }
+    {
+        "access_configs": {
+            "DB Access to Staging": {
+                "name": "Database Access to Staging 4",
+                "description": "Grants access to all staging RDS databases",
+                "account_id": "876809951775",
+                "permission_set": "ECRReadOnly",
+                "session_duration": "PT5M"
+            },
+            "Power User to SandBox": {
+                "name": "Database Access to SandBox",
+                "description": "Grants poweruser permissions on Sandbox",
+                "account_id": "110327817829",
+                "permission_set": "PowerUserAccess",
+                "session_duration": "PT5M"
+            }
+        },
+        "s3_configs": {
+            "Data Lake Read Access": {
+                "name": "data_lake_read 4",
+                "description": "Grants read-only access to data lake buckets",
+                "buckets": [
+                    "company-data-lake-prod",
+                    "company-data-lake-staging"
+                ],
+                "policy_template": "S3ReadOnlyPolicy",
+                "session_duration": "PT1H"
+            }
+        }
     }
   EOT
 }
-
-variable "s3_configs_json_2" {
-  description = "List of Kubiya integrations to enable. Supports multiple values. \n For AWS integration, the main account must be provided."
-  type        = string
-  default     = <<-EOT
-    "s3_configs": {
-      "Data Lake Read Access": {
-        "name": "data_lake_read 4",
-        "description": "Grants read-only access to data lake buckets",
-        "buckets": [
-          "company-data-lake-prod",
-          "company-data-lake-staging"
-        ],
-        "policy_template": "S3ReadOnlyPolicy",
-        "session_duration": "PT1H"
-      }
-    }
-  EOT
-}
-
 
 output "output" {
   value = kubiya_source.item
