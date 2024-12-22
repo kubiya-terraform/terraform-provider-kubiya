@@ -222,7 +222,7 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 
 		uri := c.uri("/api/v1/scheduled_tasks")
 
-		resp, err := c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}

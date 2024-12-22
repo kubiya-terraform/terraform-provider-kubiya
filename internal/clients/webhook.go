@@ -235,7 +235,7 @@ func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookMode
 			return nil, err
 		}
 
-		resp, err := c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}

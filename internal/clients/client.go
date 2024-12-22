@@ -184,8 +184,7 @@ func (c *Client) models() ([]string, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
-	resp, err := c.create(ctx, uri,
-		strings.NewReader(body))
+	resp, err := c.create(ctx, uri, nil, strings.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

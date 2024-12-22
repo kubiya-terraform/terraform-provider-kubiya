@@ -439,7 +439,7 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 
 		uri := c.uri("/api/v1/agents")
 
-		resp, err := c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}
