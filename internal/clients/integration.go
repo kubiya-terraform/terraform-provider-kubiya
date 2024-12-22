@@ -212,7 +212,7 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 
 		uri := c.uri("/api/v2/integrations")
 
-		resp, err := c.create(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}
