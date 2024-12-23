@@ -2,6 +2,7 @@ package entities
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -38,8 +39,11 @@ func SourceSchema() schema.Schema {
 				MarkdownDescription: "The descriptive name of the source",
 			},
 			"dynamic_config": schema.StringAttribute{
-				Computed:            true,
-				Optional:            true,
+				Computed: true,
+				Optional: true,
+				PlanModifiers: []planmodifier.String{
+					jsonStringModifier{},
+				},
 				Description:         "The dynamic configuration of the source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the source",
 			},
