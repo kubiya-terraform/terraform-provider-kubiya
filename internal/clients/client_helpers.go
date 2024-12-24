@@ -151,6 +151,8 @@ func (c *Client) delete(ctx context.Context, u string) (io.Reader, error) {
 		return nil, eformat("failed to create *http.Request")
 	}
 
+	req.Header.Set("force", "true")
+
 	body, err := c.doWithBody(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
@@ -234,6 +236,8 @@ func (c *Client) deleteWithBody(ctx context.Context, u string, b io.Reader) (io.
 
 		return nil, eformat("failed to create *http.Request")
 	}
+
+	req.Header.Set("force", "true")
 
 	body, err := c.doWithBody(req.WithContext(ctx))
 	if err != nil {
