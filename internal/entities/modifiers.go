@@ -37,8 +37,8 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 	err := json.Unmarshal([]byte(planValue), &tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"json unmarshal error",
-			err.Error(),
+			"Error parsing JSON",
+			"Failed to parse JSON string: "+err.Error(),
 		)
 		return
 	}
@@ -46,8 +46,8 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 	planResult, err := json.Marshal(tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"json marshal error",
-			err.Error(),
+			"Error normalizing JSON",
+			"Failed to normalize JSON: "+err.Error(),
 		)
 		return
 	}
