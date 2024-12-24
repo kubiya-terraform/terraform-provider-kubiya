@@ -8,27 +8,26 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ planmodifier.String = jsonStringModifier{}
+var (
+	_ planmodifier.String = &jsonStringModifier{}
+)
 
 type jsonStringModifier struct{}
 
-func (j jsonStringModifier) Description(_ context.Context) string {
+func jsonNormalizationModifier() planmodifier.String {
+	modifier := &jsonStringModifier{}
+	return modifier
+}
+
+func (j *jsonStringModifier) Description(_ context.Context) string {
 	return "modify json string"
 }
 
-func (j jsonStringModifier) MarkdownDescription(_ context.Context) string {
+func (j *jsonStringModifier) MarkdownDescription(_ context.Context) string {
 	return "modify json string"
 }
 
-func (j jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.StateValue.IsNull() {
-		return
-	}
-
-	if req.PlanValue.IsUnknown() {
-		return
-	}
-
+func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
 	if req.ConfigValue.IsUnknown() || req.ConfigValue.IsNull() {
 		return
 	}
