@@ -20,11 +20,11 @@ func jsonNormalizationModifier() planmodifier.String {
 }
 
 func (j *jsonStringModifier) Description(_ context.Context) string {
-	return "modify json string"
+	return "Normalizes JSON string format for consistent comparison"
 }
 
 func (j *jsonStringModifier) MarkdownDescription(_ context.Context) string {
-	return "modify json string"
+	return "Normalizes JSON string format for consistent comparison"
 }
 
 func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
