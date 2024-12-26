@@ -8,28 +8,27 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-var _ planmodifier.String = jsonStringModifier{}
+var (
+	_ planmodifier.String = &jsonStringModifier{}
+)
 
 type jsonStringModifier struct{}
 
-func (j jsonStringModifier) Description(_ context.Context) string {
-	return "modify json string"
+func jsonNormalizationModifier() planmodifier.String {
+	modifier := &jsonStringModifier{}
+	return modifier
 }
 
-func (j jsonStringModifier) MarkdownDescription(_ context.Context) string {
-	return "modify json string"
+func (j *jsonStringModifier) Description(_ context.Context) string {
+	return "Normalizes JSON string format for consistent comparison"
 }
 
-func (j jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.StateValue.IsNull() {
-		return
-	}
+func (j *jsonStringModifier) MarkdownDescription(_ context.Context) string {
+	return "Normalizes JSON string format for consistent comparison"
+}
 
-	if req.PlanValue.IsUnknown() {
-		return
-	}
-
-	if req.ConfigValue.IsUnknown() || req.ConfigValue.IsNull() {
+func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
 		return
 	}
 
@@ -38,8 +37,8 @@ func (j jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier
 	err := json.Unmarshal([]byte(planValue), &tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"json unmarshal error",
-			err.Error(),
+			"Error parsing JSON",
+			"Failed to parse JSON string: "+err.Error(),
 		)
 		return
 	}
@@ -47,8 +46,8 @@ func (j jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier
 	planResult, err := json.Marshal(tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"json marshal error",
-			err.Error(),
+			"Error normalizing JSON",
+			"Failed to normalize JSON: "+err.Error(),
 		)
 		return
 	}
