@@ -3,6 +3,7 @@ package entities
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -50,6 +51,17 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 			"Failed to parse JSON string: "+err.Error(),
 		)
 		return
+	}
+
+	if !req.StateValue.IsNull() {
+		var priorState map[string]interface{}
+		stateValue := req.StateValue.ValueString()
+		if err = json.Unmarshal([]byte(stateValue), &priorState); err == nil {
+			if reflect.DeepEqual(tmp, priorState) {
+				resp.PlanValue = req.StateValue
+				return
+			}
+		}
 	}
 
 	normalizedResult, err := json.Marshal(tmp)
