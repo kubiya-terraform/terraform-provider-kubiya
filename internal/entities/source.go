@@ -42,7 +42,7 @@ func SourceSchema() schema.Schema {
 				Computed: true,
 				Optional: true,
 				PlanModifiers: []planmodifier.String{
-					jsonStringModifier{},
+					jsonNormalizationModifier(),
 				},
 				Description:         "The dynamic configuration of the source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the source",
