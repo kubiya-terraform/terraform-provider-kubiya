@@ -28,13 +28,22 @@ func (j *jsonStringModifier) MarkdownDescription(_ context.Context) string {
 }
 
 func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() {
+	if req.StateValue.IsNull() {
 		return
 	}
 
+	if req.PlanValue.IsUnknown() {
+		return
+	}
+
+	if req.ConfigValue.IsUnknown() || req.ConfigValue.IsNull() {
+		return
+	}
+
+	// Normalize both config and plan values
 	tmp := map[string]interface{}{}
-	planValue := req.PlanValue.ValueString()
-	err := json.Unmarshal([]byte(planValue), &tmp)
+	configValue := req.ConfigValue.ValueString()
+	err := json.Unmarshal([]byte(configValue), &tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error parsing JSON",
@@ -43,7 +52,7 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 		return
 	}
 
-	planResult, err := json.Marshal(tmp)
+	normalizedResult, err := json.Marshal(tmp)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error normalizing JSON",
@@ -52,5 +61,6 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 		return
 	}
 
-	resp.PlanValue = types.StringValue(string(planResult))
+	// Set the normalized config value as the plan value
+	resp.PlanValue = types.StringValue(string(normalizedResult))
 }
