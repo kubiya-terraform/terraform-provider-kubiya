@@ -28,7 +28,8 @@ type group struct {
 }
 
 type secret struct {
-	Name        string `json:"secret_name"`
+	Name        string `json:"name"`
+	Value       string `json:"value"`
 	CreatedBy   string `json:"created_by"`
 	CreatedAt   string `json:"created_at"`
 	Description string `json:"description"`

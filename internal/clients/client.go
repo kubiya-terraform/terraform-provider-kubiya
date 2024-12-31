@@ -227,7 +227,7 @@ func (c *Client) runners() ([]*runner, error) {
 
 func (c *Client) secrets() ([]*secret, error) {
 	const (
-		path = "/api/v1/secrets"
+		path = "/api/v2/secrets"
 	)
 
 	uri := c.uri(path)
