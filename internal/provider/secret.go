@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
@@ -35,10 +34,11 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	// Read API call logic
 	if err := r.client.ReadSecret(ctx, &state); err != nil {
-		resp.Diagnostics.AddError(
-			"secret not found",
-			fmt.Sprintf("secret by name: %s not found. Error: ", state.Name)+err.Error(),
-		)
+		resp.State.RemoveResource(ctx)
+		// resp.Diagnostics.AddError(
+		// 	"secret not found",
+		// 	fmt.Sprintf("secret by name: %s not found. Error: ", state.Name)+err.Error(),
+		// )
 		return
 	}
 
@@ -119,12 +119,13 @@ func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	}
 
 	// Delete API call logic
-	if err := r.client.DeleteSecret(ctx, &state); err != nil {
-		resp.Diagnostics.AddError(
-			"failed to delete secret",
-			"failed to delete secret. Error: "+err.Error(),
-		)
-	}
+	r.client.DeleteSecret(ctx, &state)
+	// 	resp.Diagnostics.AddError(
+	// 		"failed to delete secret",
+	// 		"failed to delete secret. Error: "+err.Error(),
+	// 	)
+	// }
+	resp.State.RemoveResource(ctx)
 }
 
 func (r *secretResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
