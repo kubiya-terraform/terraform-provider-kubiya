@@ -2,9 +2,9 @@ package clients
 
 import (
 	"context"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func toSecret(s *entities.SecretModel, cs *state) *secret {
+func toSecret(s *entities.SecretModel) *secret {
 	ret := &secret{
 		Name:        s.Name.ValueString(),
 		Value:       s.Value.ValueString(),
@@ -34,10 +34,10 @@ func toSecret(s *entities.SecretModel, cs *state) *secret {
 	return ret
 }
 
-func fromSecret(s *secret, cs *state) *entities.SecretModel {
+func fromSecret(s *secret) *entities.SecretModel {
 	ret := &entities.SecretModel{
-		CreatedAt:   types.StringValue(""),
-		CreatedBy:   types.StringValue(""),
+		CreatedAt:   types.StringValue(s.CreatedAt),
+		CreatedBy:   types.StringValue(s.CreatedBy),
 		Name:        types.StringValue(s.Name),
 		Value:       types.StringValue(s.Value),
 		Description: types.StringValue(s.Description),
@@ -46,19 +46,44 @@ func fromSecret(s *secret, cs *state) *entities.SecretModel {
 	return ret
 }
 
-func (c *Client) ReadSecret(_ context.Context, entity *entities.SecretModel) error {
+func (c *Client) ReadSecret(ctx context.Context, entity *entities.SecretModel) error {
 	if entity != nil {
-		// cs, err := c.state()
-		// if err != nil {
-		// 	return err
-		// }
-		fmt.Println(c.secrets())
-
-		entity = &entities.SecretModel{
-			Name:        types.StringValue("a name"),
-			Value:       types.StringValue("a value"),
-			Description: types.StringValue("a description"),
+		secretname := entity.Name.ValueString()
+		if entity.Name.ValueString() == "" {
+			return fmt.Errorf("secret name is empty")
 		}
+
+		// get secret metadata
+		uri := c.uri(fmt.Sprintf("/api/v2/secrets/%s", secretname))
+
+		resp, err := c.read(ctx, uri)
+		if err != nil {
+			return err
+		}
+		s := &secret{}
+		err = json.NewDecoder(resp).Decode(s)
+		if err != nil {
+			return fmt.Errorf("failed to decode secret metadata - %s", err)
+		}
+
+		// get secret value
+		uri = c.uri(fmt.Sprintf("/api/v2/secrets/get_value/%s", secretname))
+		resp, err = c.read(ctx, uri)
+		if err != nil {
+			return err
+		}
+		var secretValueEncoded string
+		err = json.NewDecoder(resp).Decode(&secretValueEncoded)
+		if err != nil {
+			return fmt.Errorf("failed to read secret value - %s", err)
+		}
+		secretValue, err := b64.StdEncoding.DecodeString(string(secretValueEncoded))
+		if err != nil {
+			return fmt.Errorf("failed to decode secret value - %s", err)
+		}
+
+		s.Value = string(secretValue)
+		*entity = *fromSecret(s)
 
 		return nil
 	}
@@ -74,14 +99,14 @@ func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel)
 			errMsg = "failed to delete secret - %s"
 		)
 
-		uri := c.uri(fmt.Sprintf(path, entity.Name))
+		uri := c.uri(fmt.Sprintf(path, entity.Name.ValueString()))
 		resp, err := c.delete(ctx, uri)
 		if err != nil {
 			return err
 		}
 
 		r := &struct {
-			Result string `json:"result"`
+			Error string `json:"error"`
 		}{}
 
 		err = json.NewDecoder(resp).Decode(&r)
@@ -92,8 +117,8 @@ func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel)
 			return fmt.Errorf(errMsg, entity.Name)
 		}
 
-		if strings.Contains(r.Result, ok) {
-			return nil
+		if r.Error != "" {
+			return fmt.Errorf(errMsg, entity.Name)
 		}
 
 		return fmt.Errorf(errMsg, entity.Name)
@@ -108,68 +133,54 @@ func (c *Client) UpdateSecret(ctx context.Context, entity *entities.SecretModel)
 			path = "/api/v2/secrets/%s"
 		)
 
-		cs, err := c.state()
-		if err != nil {
-			return err
-		}
+		uri := c.uri(format(path, entity.Name.ValueString()))
 
-		uri := c.uri(format(path, entity.Name))
-
-		data := toSecret(entity, cs)
+		data := toSecret(entity)
 
 		body, err := toJson(data)
 		if err != nil {
 			return err
 		}
-
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
 			return err
 		}
-
-		var r *secret
-		err = json.NewDecoder(resp).Decode(&r)
+		obj := map[string]any{}
+		err = json.NewDecoder(resp).Decode(&obj)
 		if err != nil {
 			return err
 		}
+		if obj["error"] != nil {
+			return fmt.Errorf("failed to update secret - %s", obj["error"])
+		}
 
-		entity = fromSecret(r, cs)
-
-		return err
+		return nil
 	}
 	return fmt.Errorf("param entity (*entities.SecretModel) is nil")
 }
 
 func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel) (*entities.SecretModel, error) {
 	if entity != nil {
- 		cs, err := c.state()
-		if err != nil {
-			return nil, err
-		}
 
 		uri := c.uri("/api/v1/secret/create_secret")
-
 		payload := map[string]string{
-			"secret_name":  entity.Name.String(),
-			"secret_value": entity.Value.String(),
-			"description":  entity.Description.String(),
+			"secret_name":  entity.Name.ValueString(),
+			"secret_value": entity.Value.ValueString(),
+			"description":  entity.Description.ValueString(),
 		}
 		body, err := toJson(payload)
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.create(ctx, uri, nil, body)
+		resp, err := c.update(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}
-
-		var r *secret
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil {
-			return nil, err
+		if resp == nil {
+			return nil, fmt.Errorf("response is nil")
 		}
 
-		return fromSecret(r, cs), err
+		return entity, nil
 	}
 
 	return nil, fmt.Errorf("param entity (*entities.SecretModel) is nil")
