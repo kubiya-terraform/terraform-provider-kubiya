@@ -33,6 +33,7 @@ func (p *kubiyaProvider) Resources(context.Context) []func() resource.Resource {
 		NewKnowledgeResource,
 		NewIntegrationResource,
 		NewScheduledTaskResource,
+		NewSecreResource,
 	}
 }
 
