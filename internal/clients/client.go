@@ -227,13 +227,13 @@ func (c *Client) runners() ([]*runner, error) {
 
 func (c *Client) secrets() ([]*secret, error) {
 	const (
-		path = "/api/v1/secrets"
+		path = "/api/v2/secrets"
 	)
 
 	uri := c.uri(path)
 	ctx := context.Background()
 
-	resp, err := c.read(ctx, uri)
+ 	resp, err := c.read(ctx, uri)
 	if err != nil {
 		return nil, err
 	}
