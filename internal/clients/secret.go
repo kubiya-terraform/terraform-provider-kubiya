@@ -172,7 +172,7 @@ func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel)
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.update(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}
