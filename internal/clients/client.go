@@ -27,6 +27,9 @@ func New(key, env string) (*Client, error) {
 	case "staging":
 		host = "https://api-staging.dev.kubiya.ai"
 	}
+	if strings.HasPrefix(env, "http") {
+		host = env
+	}
 	return &Client{userKey: key, client: client, host: host}, nil
 
 }
@@ -233,7 +236,7 @@ func (c *Client) secrets() ([]*secret, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
- 	resp, err := c.read(ctx, uri)
+	resp, err := c.read(ctx, uri)
 	if err != nil {
 		return nil, err
 	}
