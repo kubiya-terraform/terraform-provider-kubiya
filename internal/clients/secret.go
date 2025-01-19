@@ -162,17 +162,17 @@ func (c *Client) UpdateSecret(ctx context.Context, entity *entities.SecretModel)
 func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel) (*entities.SecretModel, error) {
 	if entity != nil {
 
-		uri := c.uri("/api/v1/secret/create_secret")
+		uri := c.uri("/api/v2/secrets")
 		payload := map[string]string{
-			"secret_name":  entity.Name.ValueString(),
-			"secret_value": entity.Value.ValueString(),
-			"description":  entity.Description.ValueString(),
+			"name":        entity.Name.ValueString(),
+			"value":       entity.Value.ValueString(),
+			"description": entity.Description.ValueString(),
 		}
 		body, err := toJson(payload)
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.update(ctx, uri, body)
+		resp, err := c.create(ctx, uri, nil, body)
 		if err != nil {
 			return nil, err
 		}
