@@ -10,7 +10,8 @@ import (
 	"terraform-provider-kubiya/internal/entities"
 )
 
-type runnerResponse struct {
+// runner is used internally by the client
+type runner struct {
 	Name                string  `json:"name"`
 	Subject             string  `json:"subject"`
 	Namespace           string  `json:"namespace"`
@@ -58,7 +59,7 @@ func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) e
 		return err
 	}
 
-	var r runnerResponse
+	var r runner
 	if err := json.NewDecoder(resp).Decode(&r); err != nil {
 		return err
 	}
