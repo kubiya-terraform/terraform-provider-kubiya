@@ -6,21 +6,15 @@ import (
 )
 
 type RunnerModel struct {
-	Key     types.String `tfsdk:"key"`
-	Url     types.String `tfsdk:"url"`
-	Name    types.String `tfsdk:"name"`
-	Path    types.String `tfsdk:"path"`
-	Subject types.String `tfsdk:"subject"`
+	Name       types.String `tfsdk:"name"`
+	RunnerType types.String `tfsdk:"runner_type"`
 }
 
 func RunnerSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"name":    schema.StringAttribute{Required: true},
-			"key":     schema.StringAttribute{Computed: true},
-			"url":     schema.StringAttribute{Computed: true},
-			"subject": schema.StringAttribute{Computed: true},
-			"path":    schema.StringAttribute{Optional: true, Computed: true},
+			"name":        schema.StringAttribute{Required: true},
+			"runner_type": schema.StringAttribute{Computed: true},
 		},
 	}
 }
