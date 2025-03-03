@@ -303,7 +303,7 @@ func (c *Client) knowledge() ([]*knowledge, error) {
 
 func (c *Client) integrations() ([]*integration, error) {
 	const (
-		path            = "/api/v1/runners"
+		path            = "/api/v3/runners"
 		managed         = "kubiya-managed"
 		pathIntegration = "/api/v2/integrations"
 	)
