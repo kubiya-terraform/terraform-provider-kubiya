@@ -303,43 +303,17 @@ func (c *Client) knowledge() ([]*knowledge, error) {
 
 func (c *Client) integrations() ([]*integration, error) {
 	const (
-		path            = "/api/v3/runners"
-		managed         = "kubiya-managed"
 		pathIntegration = "/api/v2/integrations"
 	)
 
-	uri := c.uri(path)
 	ctx := context.Background()
-
-	resp, err := c.read(ctx, uri)
-	if err != nil {
-		return nil, err
-	}
-
-	var tmp map[string]interface{}
-
-	err = json.NewDecoder(resp).Decode(&tmp)
-	if err != nil {
-		return nil, err
-	}
-
 	result := []*integration{
 		{Name: "slack"},
 		{Name: "kubernetes"},
 	}
 
-	if val, ok := tmp[managed]; ok {
-		if items, ok := val.(map[string]interface{}); ok {
-			for integrationName := range items {
-				result = append(result, &integration{
-					Name: integrationName,
-				})
-			}
-		}
-	}
-
-	resp, err = c.read(ctx,
-		c.uri(pathIntegration))
+	// Only call the integrations endpoint
+	resp, err := c.read(ctx, c.uri(pathIntegration))
 	if err != nil {
 		return nil, err
 	}
