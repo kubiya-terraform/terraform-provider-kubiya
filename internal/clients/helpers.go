@@ -20,19 +20,6 @@ func closeBody(b io.ReadCloser) {
 	_ = b.Close()
 }
 
-func clean(str, o, n string) string {
-	return strings.ReplaceAll(str, o, n)
-}
-
-func toPathYaml(pre, suf string) string {
-	slash := "/"
-	layout := "%s/%s.yaml"
-	pre = strings.TrimSuffix(pre, slash)
-	suf = strings.TrimPrefix(suf, slash)
-
-	return fmt.Sprintf(layout, pre, suf)
-}
-
 func fromJson(r io.Reader, item any) error {
 	if r == nil {
 		return fmt.Errorf("response body is nil")

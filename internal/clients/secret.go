@@ -94,7 +94,6 @@ func (c *Client) ReadSecret(ctx context.Context, entity *entities.SecretModel) e
 func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel) error {
 	if entity != nil {
 		const (
-			ok     = ""
 			path   = "/api/v2/secrets/%s"
 			errMsg = "failed to delete secret - %s"
 		)
