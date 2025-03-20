@@ -104,7 +104,7 @@ func (c *Client) doWithBody(req *http.Request) ([]byte, error) {
 	return io.ReadAll(r.Body)
 }
 
-func (c *Client) read(ctx context.Context, u string) (io.Reader, error) {
+func (c *Client) read(ctx context.Context, u string, qp ...string) (io.Reader, error) {
 	m := http.MethodGet
 
 	req, err := http.NewRequest(m, u, nil)
@@ -114,6 +114,10 @@ func (c *Client) read(ctx context.Context, u string) (io.Reader, error) {
 		}
 
 		return nil, eformat("failed to create *http.Request")
+	}
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
 	}
 
 	body, err := c.doWithBody(req.WithContext(ctx))
@@ -124,22 +128,7 @@ func (c *Client) read(ctx context.Context, u string) (io.Reader, error) {
 	return bytes.NewReader(body), err
 }
 
-func (c *Client) readBytes(ctx context.Context, u string) ([]byte, error) {
-	m := http.MethodGet
-
-	req, err := http.NewRequest(m, u, nil)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, eformat("failed to create *http.Request")
-	}
-
-	return c.doWithBody(req.WithContext(ctx))
-}
-
-func (c *Client) delete(ctx context.Context, u string) (io.Reader, error) {
+func (c *Client) delete(ctx context.Context, u string, qp ...string) (io.Reader, error) {
 	m := http.MethodDelete
 
 	req, err := http.NewRequest(m, u, nil)
@@ -153,6 +142,10 @@ func (c *Client) delete(ctx context.Context, u string) (io.Reader, error) {
 
 	req.Header.Set("force", "true")
 
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
+	}
+
 	body, err := c.doWithBody(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
@@ -161,8 +154,70 @@ func (c *Client) delete(ctx context.Context, u string) (io.Reader, error) {
 	return bytes.NewReader(body), err
 }
 
-func (c *Client) create(ctx context.Context, u string, qp []string, b io.Reader) (io.Reader, error) {
-	m := http.MethodPost
+func (c *Client) readBytes(ctx context.Context, u string, qp ...string) ([]byte, error) {
+	m := http.MethodGet
+
+	req, err := http.NewRequest(m, u, nil)
+	if err != nil || req == nil {
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, eformat("failed to create *http.Request")
+	}
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
+	}
+
+	return c.doWithBody(req.WithContext(ctx))
+}
+
+func (c *Client) deleteResp(ctx context.Context, u string, qp ...string) (*http.Response, error) {
+	m := http.MethodDelete
+
+	req, err := http.NewRequest(m, u, nil)
+	if err != nil || req == nil {
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, eformat("failed to create *http.Request")
+	}
+
+	req.Header.Set("force", "true")
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
+	}
+
+	return c.do(req.WithContext(ctx))
+}
+
+func (c *Client) create(ctx context.Context, u string, b io.Reader, qp ...string) (io.Reader, error) {
+	req, err := http.NewRequest(http.MethodPost, u, b)
+	if err != nil || req == nil {
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, eformat("failed to create *http.Request")
+	}
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
+	}
+
+	body, err := c.doWithBody(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewReader(body), err
+}
+
+func (c *Client) update(ctx context.Context, u string, b io.Reader, qp ...string) (io.Reader, error) {
+	m := http.MethodPut
 
 	req, err := http.NewRequest(m, u, b)
 	if err != nil || req == nil {
@@ -185,27 +240,7 @@ func (c *Client) create(ctx context.Context, u string, qp []string, b io.Reader)
 	return bytes.NewReader(body), err
 }
 
-func (c *Client) update(ctx context.Context, u string, b io.Reader) (io.Reader, error) {
-	m := http.MethodPut
-
-	req, err := http.NewRequest(m, u, b)
-	if err != nil || req == nil {
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, eformat("failed to create *http.Request")
-	}
-
-	body, err := c.doWithBody(req.WithContext(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewReader(body), err
-}
-
-func (c *Client) readWithBody(ctx context.Context, u string, b io.Reader) (io.Reader, error) {
+func (c *Client) readWithBody(ctx context.Context, u string, b io.Reader, qp ...string) (io.Reader, error) {
 	m := http.MethodGet
 
 	req, err := http.NewRequest(m, u, b)
@@ -217,6 +252,10 @@ func (c *Client) readWithBody(ctx context.Context, u string, b io.Reader) (io.Re
 		return nil, eformat("failed to create *http.Request")
 	}
 
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
+	}
+
 	body, err := c.doWithBody(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
@@ -225,7 +264,7 @@ func (c *Client) readWithBody(ctx context.Context, u string, b io.Reader) (io.Re
 	return bytes.NewReader(body), err
 }
 
-func (c *Client) deleteWithBody(ctx context.Context, u string, b io.Reader) (io.Reader, error) {
+func (c *Client) deleteWithBody(ctx context.Context, u string, b io.Reader, qp ...string) (io.Reader, error) {
 	m := http.MethodDelete
 
 	req, err := http.NewRequest(m, u, b)
@@ -235,6 +274,10 @@ func (c *Client) deleteWithBody(ctx context.Context, u string, b io.Reader) (io.
 		}
 
 		return nil, eformat("failed to create *http.Request")
+	}
+
+	if len(qp) > 0 {
+		req.URL.RawQuery = strings.Join(qp, "&")
 	}
 
 	req.Header.Set("force", "true")
