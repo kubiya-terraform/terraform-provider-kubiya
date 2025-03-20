@@ -116,7 +116,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 
 		qps := []string{fmt.Sprintf("runner=%s", data.Runner)}
 
-		resp, err := c.create(ctx, uri, body, qps)
+		resp, err := c.create(ctx, uri, body, qps...)
 		if err != nil {
 			return nil, err
 		}
