@@ -16,9 +16,9 @@ type (
 	Secret struct {
 		Name        string    `json:"name"`
 		Value       string    `json:"value"`
-		Description string    `json:description`
 		CreatedAt   time.Time `json:"created_at"`
 		CreatedBy   string    `json:"created_by"`
+		Description string    `json:"description"`
 	}
 )
 
