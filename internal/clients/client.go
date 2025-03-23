@@ -186,8 +186,9 @@ func (c *Client) models() ([]string, error) {
 
 	uri := c.uri(path)
 	ctx := context.Background()
+	payload := strings.NewReader(body)
 
-	resp, err := c.create(ctx, uri, nil, strings.NewReader(body))
+	resp, err := c.create(ctx, uri, payload)
 	if err != nil {
 		return nil, err
 	}
