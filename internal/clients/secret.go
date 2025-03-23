@@ -16,9 +16,9 @@ type (
 	Secret struct {
 		Name        string    `json:"name"`
 		Value       string    `json:"value"`
-		Description string    `json:description`
 		CreatedAt   time.Time `json:"created_at"`
 		CreatedBy   string    `json:"created_by"`
+		Description string    `json:"description"`
 	}
 )
 
@@ -94,7 +94,6 @@ func (c *Client) ReadSecret(ctx context.Context, entity *entities.SecretModel) e
 func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel) error {
 	if entity != nil {
 		const (
-			ok     = ""
 			path   = "/api/v2/secrets/%s"
 			errMsg = "failed to delete secret - %s"
 		)
@@ -172,7 +171,7 @@ func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel)
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.create(ctx, uri, nil, body)
+		resp, err := c.create(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}

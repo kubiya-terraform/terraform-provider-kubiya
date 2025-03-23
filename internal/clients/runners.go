@@ -104,7 +104,7 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 	}
 
 	reqUri := c.uri(format(uri, name))
-	_, err = c.create(ctx, reqUri, nil, body)
+	_, err = c.create(ctx, reqUri, body)
 	if err != nil {
 		return nil, err
 	}

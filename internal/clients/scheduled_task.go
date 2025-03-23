@@ -222,7 +222,7 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 
 		uri := c.uri("/api/v1/scheduled_tasks")
 
-		resp, err := c.create(ctx, uri, nil, body)
+		resp, err := c.create(ctx, uri, body)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +237,7 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 			return c.ReadScheduledTask(ctx, id)
 		}
 
-		return nil, eformat("failed to create scheduled task")
+		return nil, eformat("failed to createWithQueryParams scheduled task")
 	}
 
 	return e, fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")

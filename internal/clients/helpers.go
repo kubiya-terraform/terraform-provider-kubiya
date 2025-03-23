@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 
@@ -19,17 +20,20 @@ func closeBody(b io.ReadCloser) {
 	_ = b.Close()
 }
 
-func clean(str, o, n string) string {
-	return strings.ReplaceAll(str, o, n)
-}
+func fromJson(r io.Reader, item any) error {
+	if r == nil {
+		return fmt.Errorf("response body is nil")
+	}
 
-func toPathYaml(pre, suf string) string {
-	slash := "/"
-	layout := "%s/%s.yaml"
-	pre = strings.TrimSuffix(pre, slash)
-	suf = strings.TrimPrefix(suf, slash)
+	if item == nil {
+		return fmt.Errorf("item is nil")
+	}
 
-	return fmt.Sprintf(layout, pre, suf)
+	if err := json.NewDecoder(r).Decode(item); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func toJson(item interface{}) (io.Reader, error) {
@@ -161,4 +165,26 @@ func managedBy() (string, string) {
 	}
 
 	return by, id
+}
+
+func responseBodyError(r *http.Response) error {
+	body, err := responseBody(r)
+	if err != nil {
+		return err
+	}
+
+	return fmt.Errorf(body)
+}
+
+func responseBody(r *http.Response) (string, error) {
+	if r == nil {
+		return "", nil
+	}
+
+	defer closeBody(r.Body)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
