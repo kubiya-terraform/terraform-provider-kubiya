@@ -33,6 +33,11 @@ func InlineSourceSchema() schema.Schema {
 				Description:         "The ID of the tool",
 				MarkdownDescription: "The unique identifier of the inline source tool",
 			},
+			"type": schema.StringAttribute{
+				Computed:            true,
+				Description:         "The type of the inline source",
+				MarkdownDescription: "The descriptive type of the inline source",
+			},
 
 			// Required
 			"tools": schema.ListAttribute{
@@ -40,7 +45,7 @@ func InlineSourceSchema() schema.Schema {
 				ElementType: types.ObjectType{
 					AttrTypes: map[string]attr.Type{
 						"name":        types.StringType,
-						"prompt":      types.StringType,
+						"type":        types.StringType,
 						"image":       types.StringType,
 						"content":     types.StringType,
 						"description": types.StringType,
@@ -59,24 +64,12 @@ func InlineSourceSchema() schema.Schema {
 			"runner": schema.StringAttribute{
 				Computed:            true,
 				Optional:            true,
-				Default:             defaultString(),
 				Description:         "The runner name",
 				MarkdownDescription: "The runner name to add for inline source",
 			},
-			"type": schema.StringAttribute{
-				Computed:            true,
-				Optional:            true,
-				Default:             defaultString(),
-				Description:         "The type of the inline source",
-				MarkdownDescription: "The descriptive type of the inline source",
-			},
 			"dynamic_config": schema.StringAttribute{
-				Computed: true,
-				Optional: true,
-				Default:  defaultString(),
-				PlanModifiers: []planmodifier.String{
-					jsonNormalizationModifier(),
-				},
+				Optional:            true,
+				PlanModifiers:       []planmodifier.String{jsonNormalizationModifier()},
 				Description:         "The dynamic configuration of the inline source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the inline source",
 			},
