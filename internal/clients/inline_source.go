@@ -95,6 +95,7 @@ func parseInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
+		Tools:  make([]entities.InlineTool, 0),
 		Config: types.StringValue(string(config)),
 	}
 
@@ -147,6 +148,7 @@ func parseNewInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
+		Tools:  make([]entities.InlineTool, 0),
 		Config: types.StringValue(string(config)),
 	}
 
@@ -307,7 +309,7 @@ func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourc
 			return nil, err
 		}
 
-		err = parseInlineSourceTools(resp, e)
+		err = parseInlineSourceTools(resp, result)
 		if err != nil {
 			return nil, err
 		}
