@@ -54,9 +54,8 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 
 	if len(w.Destination.ValueString()) >= 1 {
 		const (
-			at     = "@"
-			pound  = "#"
-			Method = "Slack"
+			at    = "@"
+			pound = "#"
 		)
 
 		destination := w.Destination.ValueString()
@@ -71,7 +70,23 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 			}
 		}
 
-		wh.Communication = &communication{Method: Method, Destination: destination}
+		// Get method, default to "Slack" with capital S if empt	y
+		method := w.Method.ValueString()
+		if method == "" {
+			method = "Slack" // Capital S for consistency
+		}
+
+		// Special handling for teams method
+		if strings.EqualFold(method, "teams") {
+			// For teams, format destination as JSON with team_name and channel_name
+			teamName := w.TeamName.ValueString()
+			channelName := strings.TrimPrefix(destination, pound)
+			// Exact format as specified
+			destination = fmt.Sprintf("#{\"team_name\":\"%s\",\"channel_name\":\"%s\"}",
+				teamName, channelName)
+		}
+
+		wh.Communication = &communication{Method: method, Destination: destination}
 	}
 
 	return wh
@@ -112,6 +127,27 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		Agent:       types.StringValue(agentName),
 		Destination: types.StringValue(destination),
 		Url:         types.StringValue(w.WebhookUrl),
+	}
+
+	// Set method and team_name fields
+	if w.Communication != nil {
+		wh.Method = types.StringValue(w.Communication.Method)
+
+		// For teams method, extract team_name from the destination JSON
+		if strings.EqualFold(w.Communication.Method, "teams") &&
+			strings.HasPrefix(w.Communication.Destination, "#{") {
+			// Remove the "#" prefix
+			jsonStr := strings.TrimPrefix(w.Communication.Destination, "#")
+			var teamsDest struct {
+				TeamName    string `json:"team_name"`
+				ChannelName string `json:"channel_name"`
+			}
+			if err := json.Unmarshal([]byte(jsonStr), &teamsDest); err == nil {
+				wh.TeamName = types.StringValue(teamsDest.TeamName)
+				// Set the destination to the channel name with # prefix
+				wh.Destination = types.StringValue("#" + teamsDest.ChannelName)
+			}
+		}
 	}
 
 	return wh
