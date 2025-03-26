@@ -2,6 +2,7 @@ package entities
 
 import (
 	"context"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -50,8 +51,8 @@ func (v teamNameValidator) ValidateString(ctx context.Context, req validator.Str
 		return
 	}
 
-	// If method is teams, team_name must be provided and not empty
-	if !method.IsNull() && !method.IsUnknown() && method.ValueString() == "teams" {
+	// Only validate team_name if method is "teams"
+	if !method.IsNull() && !method.IsUnknown() && strings.EqualFold(method.ValueString(), "teams") {
 		if req.ConfigValue.ValueString() == "" {
 			resp.Diagnostics.AddAttributeError(
 				req.Path,
@@ -62,19 +63,56 @@ func (v teamNameValidator) ValidateString(ctx context.Context, req validator.Str
 	}
 }
 
+// Add a new validator for destination
+type destinationValidator struct{}
+
+func (v destinationValidator) Description(ctx context.Context) string {
+	return "Validates destination is provided when method is not 'http'"
+}
+
+func (v destinationValidator) MarkdownDescription(ctx context.Context) string {
+	return "Validates that `destination` is provided when `method` is not `http`"
+}
+
+func (v destinationValidator) ValidateString(ctx context.Context, req validator.StringRequest, resp *validator.StringResponse) {
+	methodPath := path.Root("method")
+	var method types.String
+	diags := req.Config.GetAttribute(ctx, methodPath, &method)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// If method is not "http", destination is required
+	if !method.IsNull() && !method.IsUnknown() && !strings.EqualFold(method.ValueString(), "http") {
+		if req.ConfigValue.IsNull() || req.ConfigValue.IsUnknown() || req.ConfigValue.ValueString() == "" {
+			resp.Diagnostics.AddAttributeError(
+				req.Path,
+				"Missing Destination",
+				"Destination is required when Method is not 'http'",
+			)
+		}
+	}
+}
+
 func WebhookSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Computed: true},
-			"created_at":  schema.StringAttribute{Computed: true},
-			"created_by":  schema.StringAttribute{Computed: true},
-			"url":         schema.StringAttribute{Computed: true},
-			"name":        schema.StringAttribute{Required: true},
-			"agent":       schema.StringAttribute{Required: true},
-			"source":      schema.StringAttribute{Required: true},
-			"prompt":      schema.StringAttribute{Required: true},
-			"destination": schema.StringAttribute{Required: true},
-			"filter":      schema.StringAttribute{Optional: true},
+			"id":         schema.StringAttribute{Computed: true},
+			"created_at": schema.StringAttribute{Computed: true},
+			"created_by": schema.StringAttribute{Computed: true},
+			"url":        schema.StringAttribute{Computed: true},
+			"name":       schema.StringAttribute{Required: true},
+			"agent":      schema.StringAttribute{Required: true},
+			"source":     schema.StringAttribute{Required: true},
+			"prompt":     schema.StringAttribute{Required: true},
+			"destination": schema.StringAttribute{
+				Optional: true,
+				Validators: []validator.String{
+					destinationValidator{},
+				},
+			},
+			"filter": schema.StringAttribute{Optional: true},
 			"method": schema.StringAttribute{
 				Optional: true,
 				Computed: true,

@@ -52,7 +52,17 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		}
 	}
 
-	if len(w.Destination.ValueString()) >= 1 {
+	// Get method, default to "Slack" with capital S if empty
+	method := w.Method.ValueString()
+	if method == "" {
+		method = "Slack" // Capital S for consistency
+	}
+
+	// Handle destination based on method
+	if strings.EqualFold(method, "http") {
+		// For http, destination can be empty
+		wh.Communication = &communication{Method: method, Destination: ""}
+	} else if len(w.Destination.ValueString()) >= 1 {
 		const (
 			at    = "@"
 			pound = "#"
@@ -70,18 +80,10 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 			}
 		}
 
-		// Get method, default to "Slack" with capital S if empt	y
-		method := w.Method.ValueString()
-		if method == "" {
-			method = "Slack" // Capital S for consistency
-		}
-
 		// Special handling for teams method
 		if strings.EqualFold(method, "teams") {
-			// For teams, format destination as JSON with team_name and channel_name
 			teamName := w.TeamName.ValueString()
 			channelName := strings.TrimPrefix(destination, pound)
-			// Exact format as specified
 			destination = fmt.Sprintf("#{\"team_name\":\"%s\",\"channel_name\":\"%s\"}",
 				teamName, channelName)
 		}
@@ -144,8 +146,7 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 			}
 			if err := json.Unmarshal([]byte(jsonStr), &teamsDest); err == nil {
 				wh.TeamName = types.StringValue(teamsDest.TeamName)
-				// Set the destination to the channel name with # prefix
-				wh.Destination = types.StringValue("#" + teamsDest.ChannelName)
+				wh.Destination = types.StringValue(teamsDest.ChannelName) // Don't add # prefix
 			}
 		}
 	}
