@@ -80,15 +80,24 @@ func equal(str, term string) bool {
 	return strings.EqualFold(str, term)
 }
 
-func fromListStringType(list types.List) []string {
-	result := make([]string, 0)
-	for _, el := range list.Elements() {
-		if !el.IsNull() && !el.IsUnknown() {
-			str := el.String()
-			result = append(result, strings.ReplaceAll(str, "\"", ""))
-		}
+func normalizeJSON(input string) (string, error) {
+	var data interface{}
+
+	if err := json.Unmarshal([]byte(input), &data); err != nil {
+		return "", err
 	}
-	return result
+
+	// Marshal with sorted keys and consistent output
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "") // no extra whitespace
+	if err := enc.Encode(data); err != nil {
+		return "", err
+	}
+
+	// Remove trailing newline added by Encoder
+	return strings.TrimSpace(buf.String()), nil
 }
 
 func toListStringType(items []string, err error) types.List {
