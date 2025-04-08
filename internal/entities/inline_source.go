@@ -79,27 +79,19 @@ func InlineSourceSchema() schema.Schema {
 				Description: "A list of tools for inline source",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"workflow": schema.BoolAttribute{
-							Optional: true,
-							Computed: true,
-							Default:  booldefault.StaticBool(false),
-						},
-						"long_running": schema.BoolAttribute{
-							Optional: true,
-							Computed: true,
-							Default:  booldefault.StaticBool(false),
-						},
+						"workflow":     schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
+						"long_running": schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
 
-						"icon":        schema.StringAttribute{Optional: true},
 						"name":        schema.StringAttribute{Required: true},
-						"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"image":       schema.StringAttribute{Optional: true},
-						"content":     schema.StringAttribute{Optional: true},
-						"mermaid":     schema.StringAttribute{Optional: true},
-						"on_start":    schema.StringAttribute{Optional: true},
-						"on_build":    schema.StringAttribute{Optional: true},
 						"description": schema.StringAttribute{Required: true},
-						"on_complete": schema.StringAttribute{Optional: true},
+						"icon":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"image":       schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"content":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"mermaid":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"on_start":    schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"on_build":    schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+						"on_complete": schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
 
 						"env":        schema.ListAttribute{Optional: true, ElementType: types.StringType},
 						"secrets":    schema.ListAttribute{Optional: true, ElementType: types.StringType},
@@ -107,23 +99,22 @@ func InlineSourceSchema() schema.Schema {
 
 						"args": schema.ListNestedAttribute{Optional: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 							"name":        schema.StringAttribute{Required: true},
-							"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
 							"description": schema.StringAttribute{Required: true},
-							"required":    schema.BoolAttribute{Optional: true},
-							"default":     schema.StringAttribute{Optional: true},
 							"options":     schema.ListAttribute{Optional: true, ElementType: types.StringType},
+							"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+							"default":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+							"required":    schema.BoolAttribute{Optional: true, Default: booldefault.StaticBool(false)},
 							"options_from": schema.SingleNestedAttribute{
-								Optional: true,
-								Attributes: map[string]schema.Attribute{
+								Optional: true, Attributes: map[string]schema.Attribute{
 									"image":  schema.StringAttribute{Required: true},
 									"script": schema.StringAttribute{Required: true},
 								},
 							},
 						}}},
 						"files": schema.ListNestedAttribute{Optional: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-							"source":      schema.StringAttribute{Optional: true},
 							"destination": schema.StringAttribute{Required: true},
-							"content":     schema.StringAttribute{Optional: true},
+							"source":      schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
+							"content":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
 						}}},
 					},
 				},

@@ -305,45 +305,57 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 			Description: types.StringValue(ist.Description),
 			OnComplete:  types.StringValue(ist.OnComplete),
 
-			Env:        toListStringType(ist.Env, err),
-			Secrets:    toListStringType(ist.Secrets, err),
-			Entrypoint: toListStringType(ist.Entrypoint, err),
-
-			Args:  make([]entities.ArgModel, 0),
-			Files: make([]entities.FileSpecModel, 0),
-
 			Workflow:    types.BoolValue(ist.Workflow),
 			LongRunning: types.BoolValue(ist.LongRunning),
 		}
 
-		for _, el := range ist.Args {
-			argument := entities.ArgModel{
-				Name:        types.StringValue(el.Name),
-				Type:        types.StringValue(el.Type),
-				Required:    types.BoolValue(el.Required),
-				Default:     types.StringValue(el.Default),
-				Options:     toListStringType(el.Options, err),
-				Description: types.StringValue(el.Description),
-			}
-
-			if el.OptionsFrom != nil {
-				argument.OptionsFrom = entities.OptionsFormModel{
-					Image:  types.StringValue(el.OptionsFrom.Image),
-					Script: types.StringValue(el.OptionsFrom.Script),
-				}
-			}
-
-			tool.Args = append(tool.Args, argument)
+		if len(ist.Env) > 0 {
+			tool.Env = toListStringType(ist.Env, err)
+		}
+		if len(ist.Secrets) > 0 {
+			tool.Env = toListStringType(ist.Secrets, err)
+		}
+		if len(ist.Entrypoint) > 0 {
+			tool.Env = toListStringType(ist.Entrypoint, err)
 		}
 
-		for _, el := range ist.Files {
-			file := entities.FileSpecModel{
-				Source:      types.StringValue(el.Source),
-				Content:     types.StringValue(el.Content),
-				Destination: types.StringValue(el.Destination),
-			}
+		if len(ist.Args) > 0 {
+			tool.Args = make([]entities.ArgModel, 0)
+			for _, el := range ist.Args {
+				argument := entities.ArgModel{
+					Name:        types.StringValue(el.Name),
+					Type:        types.StringValue(el.Type),
+					Required:    types.BoolValue(el.Required),
+					Default:     types.StringValue(el.Default),
+					Description: types.StringValue(el.Description),
+				}
 
-			tool.Files = append(tool.Files, file)
+				if len(el.Options) > 0 {
+					argument.Options = toListStringType(el.Options, err)
+				}
+
+				if el.OptionsFrom != nil {
+					argument.OptionsFrom = entities.OptionsFormModel{
+						Image:  types.StringValue(el.OptionsFrom.Image),
+						Script: types.StringValue(el.OptionsFrom.Script),
+					}
+				}
+
+				tool.Args = append(tool.Args, argument)
+			}
+		}
+
+		if len(ist.Files) > 0 {
+			tool.Files = make([]entities.FileSpecModel, 0)
+			for _, el := range ist.Files {
+				file := entities.FileSpecModel{
+					Source:      types.StringValue(el.Source),
+					Content:     types.StringValue(el.Content),
+					Destination: types.StringValue(el.Destination),
+				}
+
+				tool.Files = append(tool.Files, file)
+			}
 		}
 
 		e.Tools = append(e.Tools, tool)
