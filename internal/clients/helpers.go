@@ -80,6 +80,17 @@ func equal(str, term string) bool {
 	return strings.EqualFold(str, term)
 }
 
+func fromListStringType(list types.List) []string {
+	result := make([]string, 0)
+	for _, el := range list.Elements() {
+		if !el.IsNull() && !el.IsUnknown() {
+			str := el.String()
+			result = append(result, strings.ReplaceAll(str, "\"", ""))
+		}
+	}
+	return result
+}
+
 func toListStringType(items []string, err error) types.List {
 	var elements []attr.Value
 	for _, item := range items {
