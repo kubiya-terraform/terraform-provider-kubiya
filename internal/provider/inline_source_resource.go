@@ -60,13 +60,6 @@ func (r *inlineSourceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
-	if plan.Tools == nil || len(plan.Tools) == 0 {
-		resp.Diagnostics.AddError(
-			resourceActionError(createAction, r.name, "tools is required"),
-		)
-		return
-	}
-
 	state, err := r.client.CreateInlineSource(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -100,11 +93,7 @@ func (r *inlineSourceResource) Update(ctx context.Context, req resource.UpdateRe
 	var state entities.InlineSourceModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
-
-	if plan.Tools == nil || len(plan.Tools) == 0 {
-		resp.Diagnostics.AddError(
-			resourceActionError(createAction, r.name, "tools is required"),
-		)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -113,35 +102,24 @@ func (r *inlineSourceResource) Update(ctx context.Context, req resource.UpdateRe
 		return
 	}
 
-	updatedState := state
-
-	if plan.Tools != nil {
-		updatedState.Tools = plan.Tools
-	}
-	if !plan.Id.IsNull() && !plan.Id.IsUnknown() {
-		updatedState.Id = plan.Id
-	}
-	if !plan.Name.IsNull() && !plan.Name.IsUnknown() {
-		updatedState.Name = plan.Name
-	}
-	if !plan.Type.IsNull() && !plan.Type.IsUnknown() {
-		updatedState.Type = plan.Type
-	}
-	if !plan.Config.IsNull() && !plan.Config.IsUnknown() {
-		updatedState.Config = plan.Config
-	}
-	if !plan.Runner.IsNull() && !plan.Runner.IsUnknown() {
-		updatedState.Runner = plan.Runner
-	}
-
-	if err := r.client.UpdateInlineSource(ctx, &updatedState); err != nil {
+	// Destroy the current resource
+	if err := r.client.DeleteInlineSource(ctx, &state); err != nil {
 		resp.Diagnostics.AddError(
-			resourceActionError(updateAction, r.name, err.Error()),
+			resourceActionError(deleteAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
+	// Re-create the resource using the plan
+	newState, err := r.client.CreateInlineSource(ctx, &plan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(createAction, r.name, err.Error()),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
 }
 
 func (r *inlineSourceResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
