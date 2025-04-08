@@ -1,9 +1,10 @@
 package entities
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"reflect"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -42,29 +43,8 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 	}
 
 	// Normalize both config and plan values
-	tmp := map[string]interface{}{}
 	configValue := req.ConfigValue.ValueString()
-	err := json.Unmarshal([]byte(configValue), &tmp)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error parsing JSON",
-			"Failed to parse JSON string: "+err.Error(),
-		)
-		return
-	}
-
-	if !req.StateValue.IsNull() {
-		var priorState map[string]interface{}
-		stateValue := req.StateValue.ValueString()
-		if err = json.Unmarshal([]byte(stateValue), &priorState); err == nil {
-			if reflect.DeepEqual(tmp, priorState) {
-				resp.PlanValue = req.StateValue
-				return
-			}
-		}
-	}
-
-	normalizedResult, err := json.Marshal(tmp)
+	normalizedResult, err := normalizeJSON(configValue)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error normalizing JSON",
@@ -74,5 +54,25 @@ func (j *jsonStringModifier) PlanModifyString(_ context.Context, req planmodifie
 	}
 
 	// Set the normalized config value as the plan value
-	resp.PlanValue = types.StringValue(string(normalizedResult))
+	resp.PlanValue = types.StringValue(normalizedResult)
+}
+
+func normalizeJSON(input string) (string, error) {
+	var data interface{}
+
+	if err := json.Unmarshal([]byte(input), &data); err != nil {
+		return "", err
+	}
+
+	// Marshal with sorted keys and consistent output
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "") // no extra whitespace
+	if err := enc.Encode(data); err != nil {
+		return "", err
+	}
+
+	// Remove trailing newline added by Encoder
+	return strings.TrimSpace(buf.String()), nil
 }

@@ -2,58 +2,16 @@ package entities
 
 import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
-
-type ArgModel struct {
-	Name        types.String     `tfsdk:"name"`
-	Type        types.String     `tfsdk:"type"`
-	Default     types.String     `tfsdk:"default"`
-	Options     types.List       `tfsdk:"options"`
-	Required    types.Bool       `tfsdk:"required"`
-	Description types.String     `tfsdk:"description"`
-	OptionsFrom OptionsFormModel `tfsdk:"options_from"`
-}
-
-type OptionsFormModel struct {
-	Image  types.String `tfsdk:"image"`
-	Script types.String `tfsdk:"script"`
-}
-type FileSpecModel struct {
-	Source      types.String `tfsdk:"source"`
-	Content     types.String `tfsdk:"content"`
-	Destination types.String `tfsdk:"destination"`
-}
-
-type InlineTool struct {
-	Icon        types.String `tfsdk:"icon"`
-	Name        types.String `tfsdk:"name"`
-	Type        types.String `tfsdk:"type"`
-	Image       types.String `tfsdk:"image"`
-	Content     types.String `tfsdk:"content"`
-	Mermaid     types.String `tfsdk:"mermaid"`
-	OnStart     types.String `tfsdk:"on_start"`
-	OnBuild     types.String `tfsdk:"on_build"`
-	Description types.String `tfsdk:"description"`
-	OnComplete  types.String `tfsdk:"on_complete"`
-
-	Env        types.List      `tfsdk:"env"`
-	Args       []ArgModel      `tfsdk:"args"`
-	Files      []FileSpecModel `tfsdk:"files"`
-	Secrets    types.List      `tfsdk:"secrets"`
-	Entrypoint types.List      `tfsdk:"entrypoint"`
-
-	Workflow    types.Bool `tfsdk:"workflow"`
-	LongRunning types.Bool `tfsdk:"long_running"`
-}
 
 type InlineSourceModel struct {
 	Id     types.String `tfsdk:"id"`
 	Name   types.String `tfsdk:"name"`
 	Type   types.String `tfsdk:"type"`
-	Tools  []InlineTool `tfsdk:"tools"`
+	Tools  types.String `tfsdk:"tools"`
 	Runner types.String `tfsdk:"runner"`
 	Config types.String `tfsdk:"dynamic_config"`
 }
@@ -74,51 +32,14 @@ func InlineSourceSchema() schema.Schema {
 			},
 
 			// Required
-			"tools": schema.ListNestedAttribute{
-				Required:    true,
-				Description: "A list of tools for inline source",
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"workflow":     schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-						"long_running": schema.BoolAttribute{Optional: true, Computed: true, Default: booldefault.StaticBool(false)},
-
-						"name":        schema.StringAttribute{Required: true},
-						"description": schema.StringAttribute{Required: true},
-						"icon":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"image":       schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"content":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"mermaid":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"on_start":    schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"on_build":    schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						"on_complete": schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-
-						"env":        schema.ListAttribute{Optional: true, ElementType: types.StringType},
-						"secrets":    schema.ListAttribute{Optional: true, ElementType: types.StringType},
-						"entrypoint": schema.ListAttribute{Optional: true, ElementType: types.StringType},
-
-						"args": schema.ListNestedAttribute{Optional: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-							"name":        schema.StringAttribute{Required: true},
-							"description": schema.StringAttribute{Required: true},
-							"options":     schema.ListAttribute{Optional: true, ElementType: types.StringType},
-							"type":        schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-							"default":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-							"required":    schema.BoolAttribute{Optional: true, Default: booldefault.StaticBool(false)},
-							"options_from": schema.SingleNestedAttribute{
-								Optional: true, Attributes: map[string]schema.Attribute{
-									"image":  schema.StringAttribute{Required: true},
-									"script": schema.StringAttribute{Required: true},
-								},
-							},
-						}}},
-						"files": schema.ListNestedAttribute{Optional: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
-							"destination": schema.StringAttribute{Required: true},
-							"source":      schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-							"content":     schema.StringAttribute{Computed: true, Optional: true, Default: defaultString()},
-						}}},
-					},
+			"tools": schema.StringAttribute{
+				Required: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizationModifier(),
 				},
 			},
+
 			"name": schema.StringAttribute{
 				Required:            true,
 				Description:         "The name of the inline source tool",
@@ -133,7 +54,9 @@ func InlineSourceSchema() schema.Schema {
 				MarkdownDescription: "The runner name to add for inline source",
 			},
 			"dynamic_config": schema.StringAttribute{
+				Computed:            true,
 				Optional:            true,
+				Default:             defaultString("{}"),
 				PlanModifiers:       []planmodifier.String{jsonNormalizationModifier()},
 				Description:         "The dynamic configuration of the inline source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the inline source",

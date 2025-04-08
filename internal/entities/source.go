@@ -41,6 +41,7 @@ func SourceSchema() schema.Schema {
 			"dynamic_config": schema.StringAttribute{
 				Computed: true,
 				Optional: true,
+				Default:  defaultString("{}"),
 				PlanModifiers: []planmodifier.String{
 					jsonNormalizationModifier(),
 				},

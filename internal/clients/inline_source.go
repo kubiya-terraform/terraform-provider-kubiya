@@ -76,59 +76,11 @@ func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
 		Runner:    e.Runner.ValueString(),
 	}
 
-	for _, ist := range e.Tools {
-		t := inlineTool{
-			Name:        ist.Name.ValueString(),
-			Description: ist.Description.ValueString(),
-			Type:        ist.Type.ValueString(),
-			Content:     ist.Content.ValueString(),
-			Icon:        ist.Icon.ValueString(),
-			Image:       ist.Image.ValueString(),
-			LongRunning: ist.LongRunning.ValueBool(),
-			OnStart:     ist.OnStart.ValueString(),
-			OnBuild:     ist.OnBuild.ValueString(),
-			OnComplete:  ist.OnComplete.ValueString(),
-			Mermaid:     ist.Mermaid.ValueString(),
-			Workflow:    ist.Workflow.ValueBool(),
-
-			Env:        fromListStringType(ist.Env),
-			Secrets:    fromListStringType(ist.Secrets),
-			Entrypoint: fromListStringType(ist.Entrypoint),
-
-			Args:  make([]arg, 0),
-			Files: make([]fileSpec, 0),
+	if e.Tools.ValueString() != "" {
+		body := []byte(e.Tools.ValueString())
+		if err := json.Unmarshal(body, &req.Tools); err != nil {
+			return nil, err
 		}
-
-		for _, el := range ist.Args {
-			argument := arg{
-				Name:        el.Name.ValueString(),
-				Type:        el.Type.ValueString(),
-				Description: el.Description.ValueString(),
-				Required:    el.Required.ValueBool(),
-				Default:     el.Default.ValueString(),
-				Options:     fromListStringType(el.Options),
-				OptionsFrom: &struct {
-					Image  string `json:"image"`
-					Script string `json:"script"`
-				}{
-					Image:  el.OptionsFrom.Image.ValueString(),
-					Script: el.OptionsFrom.Script.ValueString(),
-				},
-			}
-
-			t.Args = append(t.Args, argument)
-		}
-
-		for _, el := range ist.Files {
-			file := fileSpec{
-				Source:      el.Source.ValueString(),
-				Destination: el.Destination.ValueString(),
-				Content:     el.Content.ValueString(),
-			}
-			t.Files = append(t.Files, file)
-		}
-
-		req.Tools = append(req.Tools, t)
 	}
 
 	if e.Config.ValueString() != "" {
@@ -174,7 +126,6 @@ func parseInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
-		Tools:  make([]entities.InlineTool, 0),
 		Config: types.StringValue(string(config)),
 	}
 
@@ -227,7 +178,6 @@ func parseNewInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
-		Tools:  make([]entities.InlineTool, 0),
 		Config: types.StringValue(string(config)),
 	}
 
@@ -283,6 +233,12 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 			Type      string       `json:"type"`
 			Tools     []inlineTool `json:"tools"`
 			Workflows interface{}  `json:"workflows"`
+			Errors    []struct {
+				File    string `json:"file"`
+				Type    string `json:"type"`
+				Error   string `json:"error"`
+				Details string `json:"details"`
+			} `json:"errors,omitempty"`
 		}
 	)
 
@@ -291,75 +247,26 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 		return err
 	}
 
-	var err error
-	for _, ist := range resp.Tools {
-		tool := entities.InlineTool{
-			Icon:        types.StringValue(ist.Icon),
-			Name:        types.StringValue(ist.Name),
-			Type:        types.StringValue(ist.Type),
-			Image:       types.StringValue(ist.Image),
-			Content:     types.StringValue(ist.Content),
-			Mermaid:     types.StringValue(ist.Mermaid),
-			OnStart:     types.StringValue(ist.OnStart),
-			OnBuild:     types.StringValue(ist.OnBuild),
-			Description: types.StringValue(ist.Description),
-			OnComplete:  types.StringValue(ist.OnComplete),
-
-			Workflow:    types.BoolValue(ist.Workflow),
-			LongRunning: types.BoolValue(ist.LongRunning),
+	if len(resp.Errors) >= 1 {
+		var err error
+		const t = "file: %s, type: %s, error: %s, details: %s"
+		for _, e := range resp.Errors {
+			err = errors.Join(err, eformat(t, e.File, e.Type, e.Error, e.Details))
 		}
-
-		if len(ist.Env) > 0 {
-			tool.Env = toListStringType(ist.Env, err)
-		}
-		if len(ist.Secrets) > 0 {
-			tool.Env = toListStringType(ist.Secrets, err)
-		}
-		if len(ist.Entrypoint) > 0 {
-			tool.Env = toListStringType(ist.Entrypoint, err)
-		}
-
-		if len(ist.Args) > 0 {
-			tool.Args = make([]entities.ArgModel, 0)
-			for _, el := range ist.Args {
-				argument := entities.ArgModel{
-					Name:        types.StringValue(el.Name),
-					Type:        types.StringValue(el.Type),
-					Required:    types.BoolValue(el.Required),
-					Default:     types.StringValue(el.Default),
-					Description: types.StringValue(el.Description),
-				}
-
-				if len(el.Options) > 0 {
-					argument.Options = toListStringType(el.Options, err)
-				}
-
-				if el.OptionsFrom != nil {
-					argument.OptionsFrom = entities.OptionsFormModel{
-						Image:  types.StringValue(el.OptionsFrom.Image),
-						Script: types.StringValue(el.OptionsFrom.Script),
-					}
-				}
-
-				tool.Args = append(tool.Args, argument)
-			}
-		}
-
-		if len(ist.Files) > 0 {
-			tool.Files = make([]entities.FileSpecModel, 0)
-			for _, el := range ist.Files {
-				file := entities.FileSpecModel{
-					Source:      types.StringValue(el.Source),
-					Content:     types.StringValue(el.Content),
-					Destination: types.StringValue(el.Destination),
-				}
-
-				tool.Files = append(tool.Files, file)
-			}
-		}
-
-		e.Tools = append(e.Tools, tool)
+		return err
 	}
+
+	data, err := json.Marshal(resp.Tools)
+	if err != nil {
+		return err
+	}
+
+	tools, err := normalizeJSON(string(data))
+	if err != nil {
+		return err
+	}
+
+	e.Tools = types.StringValue(tools)
 
 	return err
 }
