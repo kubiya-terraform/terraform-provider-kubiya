@@ -28,7 +28,7 @@ resource "kubiya_agent" "agent" {
 
   //Optional Fields (omitting will retain the current values):
   //Arrays
-  integrations = ["Github"]
+  integrations = ["github_app"]
   users = ["mevrat.avraham@kubiya.ai"]
   groups = ["Admin"]
 }
