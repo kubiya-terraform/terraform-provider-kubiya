@@ -49,7 +49,7 @@ func validCron(cronExpr string) error {
 
 func parseCron(cronExpr string) (minute, hour, day, month, weekday string, err error) {
 	parts := strings.Fields(cronExpr)
-	if len(parts) != 6 {
+	if size := len(parts); size < 5 || size > 6 {
 		return "", "", "", "", "", fmt.Errorf("invalid cron expression")
 	}
 	return parts[0], parts[1], parts[2], parts[3], parts[4], nil
