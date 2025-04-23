@@ -11,17 +11,15 @@ provider "kubiya" {}
 
 resource "kubiya_inline_source" "hello_world_tool" {
   name   = "mevrat_raz_tool"
-  runner = ""
+  runner = "core-testing-1"
 
   tools = jsonencode([
     {
-      name        = "hello_world_tool"
-      description = "A simple tool that prints 'Hello World' to the console."
+      name        = "hello_world_tool update"
+      description = "A simple tool that prints 'Hello World' to the console. update"
       image       = "python:3.9"
-      content = "print('Hello World')"
-      # long_running = false
+      content     = "print('Hello World update') update"
       type        = ""
-      # workflow     = false
     }
   ])
 }

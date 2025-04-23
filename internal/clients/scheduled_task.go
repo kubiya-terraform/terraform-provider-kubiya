@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -68,6 +69,11 @@ func newScheduledTask(body io.Reader) (*scheduledTask, error) {
 }
 
 func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
+	const (
+		empty  = ""
+		layout = "2006-01-02T15:04:05"
+	)
+
 	var err error
 	result := &entities.ScheduledTaskModel{
 		Id:                types.StringValue(a.Id),
@@ -81,6 +87,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		NextScheduledTime: types.StringValue(a.NextScheduledTime),
 	}
 
+	cron := ""
 	parameters := map[string]string{}
 	for key, val := range a.Parameters {
 		if key == "repeat" {
@@ -88,6 +95,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 				if _, ok = a.Parameters["cron_string"]; ok {
 					item := a.Parameters["cron_string"]
 					if _, ok = a.Parameters["cron_string"].(string); ok {
+						cron = item.(string)
 						if e := result.ParseCron(item.(string)); e != nil {
 							err = errors.Join(err, e)
 							continue
@@ -114,6 +122,11 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		}
 	}
 	result.Parameters = toMapType(parameters, err)
+
+	if t, _ := time.Parse(layout, a.ScheduledTime); t.IsZero() {
+		result.Repeat = types.StringValue(cron)
+		result.ScheduledTime = types.StringValue(empty)
+	}
 
 	return result, err
 }
@@ -166,6 +179,12 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 		case monthly:
 			result.CronString = toMonthlyCron(result.ScheduledTime)
 		}
+	}
+
+	var options = []string{daily, hourly, weekly, monthly}
+	if cron := e.Repeat.ValueString(); !slices.Contains(options, cron) && len(cron) > 0 {
+		err = nil
+		result.CronString = cron
 	}
 
 	return result, err
