@@ -14,6 +14,18 @@ import (
 	"terraform-provider-kubiya/internal/entities"
 )
 
+const (
+	empty   = ""
+	daily   = "daily"
+	hourly  = "hourly"
+	weekly  = "weekly"
+	monthly = "monthly"
+)
+
+var (
+	cronOptions = []string{daily, hourly, weekly, monthly}
+)
+
 type scheduledTask struct {
 	Id                string                 `json:"task_id"`
 	UUID              string                 `json:"task_uuid"`
@@ -70,7 +82,6 @@ func newScheduledTask(body io.Reader) (*scheduledTask, error) {
 
 func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 	const (
-		empty  = ""
 		layout = "2006-01-02T15:04:05"
 	)
 
@@ -132,15 +143,8 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 }
 
 func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRequest, error) {
-	const (
-		empty   = ""
-		daily   = "daily"
-		hourly  = "hourly"
-		weekly  = "weekly"
-		monthly = "monthly"
-	)
-
 	var err error
+
 	result := &createScheduledTaskRequest{
 		CronString:  empty,
 		Agent:       e.Agent.ValueString(),
@@ -181,8 +185,7 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 		}
 	}
 
-	var options = []string{daily, hourly, weekly, monthly}
-	if cron := e.Repeat.ValueString(); !slices.Contains(options, cron) && len(cron) > 0 {
+	if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
 		err = nil
 		result.CronString = cron
 	}
@@ -253,7 +256,16 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 		}
 
 		if id, ok := tmp["task_id"]; ok {
-			return c.ReadScheduledTask(ctx, id)
+			var entity *entities.ScheduledTaskModel
+			if entity, err = c.ReadScheduledTask(ctx, id); err != nil {
+				return nil, err
+			}
+
+			if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
+				entity.Repeat = types.StringValue(cron)
+			}
+
+			return entity, nil
 		}
 
 		return nil, eformat("failed to createWithQueryParams scheduled task")
