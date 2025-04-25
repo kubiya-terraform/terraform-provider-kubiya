@@ -46,6 +46,9 @@ func fromSource(a *source, dynamicConfigStr types.String) (*entities.SourceModel
 				return nil, err
 			}
 			result.DynamicConfig = types.StringValue(string(marshal))
+		} else {
+			// Always set at least an empty JSON object to prevent null values
+			result.DynamicConfig = types.StringValue("{}")
 		}
 	} else {
 		result.DynamicConfig = dynamicConfigStr
@@ -88,7 +91,8 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 		return nil, err
 	}
 
-	return fromSource(r, types.StringValue(""))
+	// Pass an empty JSON object as default to ensure dynamic_config is never null
+	return fromSource(r, types.StringValue("{}"))
 }
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {

@@ -25,7 +25,57 @@ func NewSourceResource() resource.Resource {
 	return &sourceResource{}
 }
 
-func (r *sourceResource) Update(_ context.Context, _ resource.UpdateRequest, _ *resource.UpdateResponse) {
+func (r *sourceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var plan entities.SourceModel
+	var state entities.SourceModel
+
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Since we don't have a direct UpdateSource method, we'll use a read-modify approach
+	// First, read the current state to ensure we have the latest data
+	currentState, err := r.client.ReadSource(ctx, state.Id.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(readAction, r.name, err.Error()),
+		)
+		return
+	}
+
+	// Create a new instance with the updated values
+	// Preserve the ID and other computed fields
+	updatePlan := &entities.SourceModel{
+		Id:            currentState.Id,
+		Name:          currentState.Name,
+		Url:           plan.Url,
+		Runner:        plan.Runner,
+		DynamicConfig: plan.DynamicConfig,
+	}
+
+	// Delete and recreate the resource since we don't have a direct update method
+	if err := r.client.DeleteSource(ctx, currentState); err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(deleteAction, r.name, err.Error()),
+		)
+		return
+	}
+
+	newState, err := r.client.CreateSource(ctx, updatePlan)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			resourceActionError(createAction, r.name, err.Error()),
+		)
+		return
+	}
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, newState)...)
 }
 
 func (r *sourceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
