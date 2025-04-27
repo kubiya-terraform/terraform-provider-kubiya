@@ -131,6 +131,10 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 			return nil, err
 		}
 
+		if result.DynamicConfig == nil {
+			returnSource.DynamicConfig = types.StringValue(e.DynamicConfig.ValueString())
+		}
+
 		return returnSource, nil
 	}
 
