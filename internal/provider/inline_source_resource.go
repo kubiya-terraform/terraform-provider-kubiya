@@ -60,6 +60,16 @@ func (r *inlineSourceResource) Create(ctx context.Context, req resource.CreateRe
 		return
 	}
 
+	tools := plan.Tools.ValueString()
+	workflow := plan.Workflows.ValueString()
+
+	if tools == "{}" && workflow == "{}" {
+		resp.Diagnostics.AddError(
+			resourceActionError(createAction, r.name, "tools and workflows cannot be empty"),
+		)
+		return
+	}
+
 	state, err := r.client.CreateInlineSource(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
