@@ -48,6 +48,13 @@ func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
 		}
 	}
 
+	if e.Workflows.ValueString() != "" {
+		body := []byte(e.Workflows.ValueString())
+		if err := json.Unmarshal(body, &req.Workflows); err != nil {
+			return nil, err
+		}
+	}
+
 	return toJson(req)
 }
 
