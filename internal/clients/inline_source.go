@@ -34,21 +34,21 @@ func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
 		Runner:    e.Runner.ValueString(),
 	}
 
-	if e.Tools.ValueString() != "" {
+	if e.Tools.ValueString() != "" && e.Tools.ValueString() != "{}" {
 		body := []byte(e.Tools.ValueString())
 		if err := json.Unmarshal(body, &req.Tools); err != nil {
 			return nil, err
 		}
 	}
 
-	if e.Config.ValueString() != "" {
+	if e.Config.ValueString() != "" && e.Config.ValueString() != "{}" {
 		body := []byte(e.Config.ValueString())
 		if err := json.Unmarshal(body, &req.Config); err != nil {
 			return nil, err
 		}
 	}
 
-	if e.Workflows.ValueString() != "" {
+	if e.Workflows.ValueString() != "" && e.Workflows.ValueString() != "{}" {
 		body := []byte(e.Workflows.ValueString())
 		if err := json.Unmarshal(body, &req.Workflows); err != nil {
 			return nil, err
@@ -158,10 +158,10 @@ func parseNewInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 	type (
 		response struct {
-			Id        string      `json:"uuid"`
-			Type      string      `json:"type"`
-			Tools     interface{} `json:"tools"`
-			Workflows interface{} `json:"workflows"`
+			Id        string           `json:"uuid"`
+			Type      string           `json:"type"`
+			Tools     interface{}      `json:"tools"`
+			Workflows []map[string]any `json:"workflows"`
 			Errors    []struct {
 				File    string `json:"file"`
 				Type    string `json:"type"`
@@ -186,30 +186,46 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 		return err
 	}
 
-	toolsData, err := json.Marshal(resp.Tools)
-	if err != nil {
-		return err
+	if resp.Tools != nil {
+		toolsData, err := json.Marshal(resp.Tools)
+		if err != nil {
+			return err
+		}
+
+		normalized, err := normalizeJSON(string(toolsData))
+		if err != nil {
+			return err
+		}
+
+		if normalized == "[]" {
+			normalized = ""
+		}
+		e.Tools = types.StringValue(normalized)
 	}
 
-	tools, err := normalizeJSON(string(toolsData))
-	if err != nil {
-		return err
+	if len(resp.Workflows) >= 1 {
+		workflowList := make([]map[string]any, 0)
+		for _, workflow := range resp.Workflows {
+			workflowList = append(workflowList, cleanMap(workflow))
+		}
+
+		data, err := json.Marshal(workflowList)
+		if err != nil {
+			return err
+		}
+
+		normalized, err := normalizeJSON(string(data))
+		if err != nil {
+			return err
+		}
+
+		if normalized == "[]" {
+			normalized = ""
+		}
+		e.Workflows = types.StringValue(normalized)
 	}
 
-	workflowsData, err := json.Marshal(resp.Workflows)
-	if err != nil {
-		return err
-	}
-
-	workflows, err := normalizeJSON(string(workflowsData))
-	if err != nil {
-		return err
-	}
-
-	e.Tools = types.StringValue(tools)
-	e.Workflows = types.StringValue(workflows)
-
-	return err
+	return nil
 }
 
 func (c *Client) DeleteInlineSource(ctx context.Context, e *entities.InlineSourceModel) error {
@@ -329,7 +345,7 @@ func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourc
 		id := result.Id.ValueString()
 		uri = c.uri(format(metadataUri, id))
 
-		resp, err = c.read(ctx, uri)
+		resp, err = c.read(ctx, uri, "exclude_workflows_tools=true")
 		if err != nil {
 			return nil, err
 		}
