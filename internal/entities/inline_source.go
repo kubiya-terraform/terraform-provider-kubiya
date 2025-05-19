@@ -18,7 +18,7 @@ type InlineSourceModel struct {
 }
 
 func InlineSourceSchema() schema.Schema {
-	const emptyJson = "{}"
+	const emptyJson = ""
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			// Computed
@@ -68,7 +68,7 @@ func InlineSourceSchema() schema.Schema {
 			"dynamic_config": schema.StringAttribute{
 				Computed:            true,
 				Optional:            true,
-				Default:             defaultString(emptyJson),
+				Default:             defaultString("{}"),
 				PlanModifiers:       []planmodifier.String{jsonNormalizationModifier()},
 				Description:         "The dynamic configuration of the inline source",
 				MarkdownDescription: "A map of key-value pairs representing dynamic configuration for the inline source",

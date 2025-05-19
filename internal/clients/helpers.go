@@ -208,3 +208,59 @@ func responseBody(r *http.Response) (string, error) {
 	}
 	return string(body), nil
 }
+
+func cleanMap(m map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	for k, v := range m {
+		// Skip nil values
+		if v == nil {
+			continue
+		}
+
+		// Skip empty strings
+		if s, ok := v.(string); ok && s == "" {
+			continue
+		}
+
+		// Handle empty maps - either empty or only containing empty values
+		if subMap, ok := v.(map[string]interface{}); ok {
+			cleaned := cleanMap(subMap)
+			if len(cleaned) > 0 {
+				result[k] = cleaned
+			}
+			continue
+		}
+
+		// Handle slices/arrays
+		if arr, ok := v.([]interface{}); ok {
+			if len(arr) == 0 {
+				continue
+			}
+
+			// Clean each item in the array if it's a map
+			cleanedArr := make([]interface{}, 0, len(arr))
+			for _, item := range arr {
+				if itemMap, ok := item.(map[string]interface{}); ok {
+					cleaned := cleanMap(itemMap)
+					if len(cleaned) > 0 {
+						cleanedArr = append(cleanedArr, cleaned)
+					}
+				} else {
+					// Keep non-map items as is
+					cleanedArr = append(cleanedArr, item)
+				}
+			}
+
+			if len(cleanedArr) > 0 {
+				result[k] = cleanedArr
+			}
+			continue
+		}
+
+		// Keep non-empty, non-map, non-slice values
+		result[k] = v
+	}
+
+	return result
+}
