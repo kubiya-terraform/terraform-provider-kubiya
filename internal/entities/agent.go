@@ -32,16 +32,17 @@ type AgentModel struct {
 	Instructions types.String `tfsdk:"instructions"`
 
 	// Optional
-	Links        types.List     `tfsdk:"links"`
-	Tasks        []TaskModel    `tfsdk:"tasks"`
-	Users        types.List     `tfsdk:"users"`
-	Groups       types.List     `tfsdk:"groups"`
-	Sources      types.List     `tfsdk:"sources"`
-	Secrets      types.List     `tfsdk:"secrets"`
-	Starters     []StarterModel `tfsdk:"starters"`
-	Tools        types.List     `tfsdk:"tool_sources"`
-	Integrations types.List     `tfsdk:"integrations"`
-	Variables    types.Map      `tfsdk:"environment_variables"`
+	Links             types.List     `tfsdk:"links"`
+	Tasks             []TaskModel    `tfsdk:"tasks"`
+	Users             types.List     `tfsdk:"users"`
+	Groups            types.List     `tfsdk:"groups"`
+	Sources           types.List     `tfsdk:"sources"`
+	Secrets           types.List     `tfsdk:"secrets"`
+	Starters          []StarterModel `tfsdk:"starters"`
+	Tools             types.List     `tfsdk:"tool_sources"`
+	Integrations      types.List     `tfsdk:"integrations"`
+	Variables         types.Map      `tfsdk:"environment_variables"`
+	DedicatedChannels types.List     `tfsdk:"dedicated_channels"`
 }
 
 type StarterModel struct {
@@ -199,6 +200,13 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A map of environment variables for the agent",
 				MarkdownDescription: "A map of key-value pairs representing environment variables for the agent",
+			},
+			"dedicated_channels": schema.ListAttribute{
+				Optional:            true,
+				Computed:            true,
+				ElementType:         types.StringType,
+				Description:         "A list of dedicated channels for the agent",
+				MarkdownDescription: "An array of dedicated channels associated with the agent",
 			},
 		},
 	}
