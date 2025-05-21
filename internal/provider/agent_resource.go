@@ -168,9 +168,6 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if !plan.Integrations.IsNull() && !plan.Integrations.IsUnknown() {
 		updatedState.Integrations = plan.Integrations
 	}
-	if !plan.DedicatedChannels.IsNull() && !plan.DedicatedChannels.IsUnknown() {
-		updatedState.DedicatedChannels = plan.DedicatedChannels
-	}
 
 	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
 		resp.Diagnostics.AddError(
