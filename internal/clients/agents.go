@@ -343,14 +343,14 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 
 	result.Integrations = toListStringType(a.Integrations, err)
 
-	if len(a.DedicatedChannels) > 0 {
+	if a.DedicatedChannels != nil {
 		channels := make([]attr.Value, len(a.DedicatedChannels))
 		for i, v := range a.DedicatedChannels {
 			channels[i] = types.StringValue(v)
 		}
 		result.DedicatedChannels = types.ListValueMust(types.StringType, channels)
 	} else {
-		result.DedicatedChannels = types.ListNull(types.StringType)
+		result.DedicatedChannels = types.ListValueMust(types.StringType, []attr.Value{})
 	}
 
 	return result, err
