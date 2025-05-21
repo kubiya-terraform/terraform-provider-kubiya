@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
@@ -27,18 +28,19 @@ type agent struct {
 	Email     string `json:"email,omitempty"`
 	Image     string `json:"image,omitempty"`
 
-	Links        []string  `json:"links"`
-	Tools        []string  `json:"tools"`
-	Tasks        []task    `json:"tasks"`
-	Sources      []string  `json:"sources"`
-	Secrets      []string  `json:"secrets"`
-	Starters     []starter `json:"starters"`
-	Integrations []string  `json:"integrations"`
-	Users        []string  `json:"allowed_users"`
-	Groups       []string  `json:"allowed_groups"`
-	Owners       []string  `json:"owners,omitempty"`
-	Runners      []string  `json:"runners,omitempty"`
-	IsDebugMode  bool      `json:"is_debug_mode,omitempty"`
+	Links             []string  `json:"links"`
+	Tools             []string  `json:"tools"`
+	Tasks             []task    `json:"tasks"`
+	Sources           []string  `json:"sources"`
+	Secrets           []string  `json:"secrets"`
+	Starters          []starter `json:"starters"`
+	Integrations      []string  `json:"integrations"`
+	Users             []string  `json:"allowed_users"`
+	Groups            []string  `json:"allowed_groups"`
+	Owners            []string  `json:"owners,omitempty"`
+	Runners           []string  `json:"runners,omitempty"`
+	IsDebugMode       bool      `json:"is_debug_mode,omitempty"`
+	DedicatedChannels []string  `json:"dedicated_channels,omitempty"`
 
 	Metadata  *metadata         `json:"metadata"`
 	Variables map[string]string `json:"environment_variables"`
@@ -80,14 +82,15 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 
 		Owners: make([]string, 0),
 
-		Links:        make([]string, 0),
-		Tools:        make([]string, 0),
-		Users:        make([]string, 0),
-		Groups:       make([]string, 0),
-		Sources:      make([]string, 0),
-		Secrets:      make([]string, 0),
-		Integrations: make([]string, 0),
-		Variables:    make(map[string]string),
+		Links:             make([]string, 0),
+		Tools:             make([]string, 0),
+		Users:             make([]string, 0),
+		Groups:            make([]string, 0),
+		Sources:           make([]string, 0),
+		Secrets:           make([]string, 0),
+		Integrations:      make([]string, 0),
+		Variables:         make(map[string]string),
+		DedicatedChannels: make([]string, 0),
 
 		Tasks:    make([]task, 0),
 		Starters: make([]starter, 0),
@@ -229,6 +232,13 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
 	}
 
+	for _, v := range a.DedicatedChannels.Elements() {
+		if !v.IsNull() && !v.IsUnknown() {
+			str := v.String()
+			result.DedicatedChannels = append(result.DedicatedChannels, strings.ReplaceAll(str, "\"", ""))
+		}
+	}
+
 	if valid := slices.Contains(cs.modelList, result.LlmModel); !valid {
 		model := result.LlmModel
 		models := strings.Join(cs.modelList, ",")
@@ -332,6 +342,16 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Sources = toListStringType(sourceList, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
+
+	if len(a.DedicatedChannels) > 0 {
+		channels := make([]attr.Value, len(a.DedicatedChannels))
+		for i, v := range a.DedicatedChannels {
+			channels[i] = types.StringValue(v)
+		}
+		result.DedicatedChannels = types.ListValueMust(types.StringType, channels)
+	} else {
+		result.DedicatedChannels = types.ListNull(types.StringType)
+	}
 
 	return result, err
 }
