@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
@@ -228,15 +227,15 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		}
 	}
 
-	for key, value := range a.Variables.Elements() {
-		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
-	}
-
 	for _, v := range a.DedicatedChannels.Elements() {
 		if !v.IsNull() && !v.IsUnknown() {
 			str := v.String()
 			result.DedicatedChannels = append(result.DedicatedChannels, strings.ReplaceAll(str, "\"", ""))
 		}
+	}
+
+	for key, value := range a.Variables.Elements() {
+		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
 	}
 
 	if valid := slices.Contains(cs.modelList, result.LlmModel); !valid {
@@ -344,13 +343,7 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Integrations = toListStringType(a.Integrations, err)
 
 	if a.DedicatedChannels != nil {
-		channels := make([]attr.Value, len(a.DedicatedChannels))
-		for i, v := range a.DedicatedChannels {
-			channels[i] = types.StringValue(v)
-		}
-		result.DedicatedChannels = types.ListValueMust(types.StringType, channels)
-	} else {
-		result.DedicatedChannels = types.ListValueMust(types.StringType, []attr.Value{})
+		result.DedicatedChannels = toListStringType(a.DedicatedChannels, err)
 	}
 
 	return result, err
