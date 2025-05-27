@@ -15,10 +15,6 @@ resource "kubiya_knowledge" "knowledge" {
   groups = ["Admin"]
   content = "terraform-content-update"
   description = "terraform-description-prod"
-
-  // Optional
-  labels = ["label-1"]
-  supported_agents = ["mevrat-enforcer"]
 }
 
 output "knowledge" {
