@@ -3,7 +3,6 @@ package entities
 import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -45,15 +44,6 @@ func ScheduledTaskSchema() schema.Schema {
 			"email": schema.StringAttribute{
 				Computed: true,
 			},
-			"repeat": schema.StringAttribute{
-				Computed: true,
-				Optional: true,
-				Validators: []validator.String{
-					onOfValidator(repeat, []string{empty,
-						hourly, daily, weekly, monthly}),
-				},
-				Default: stringdefault.StaticString(empty),
-			},
 
 			// Required
 			"agent": schema.StringAttribute{
@@ -65,11 +55,13 @@ func ScheduledTaskSchema() schema.Schema {
 			"description": schema.StringAttribute{
 				Required: true,
 			},
-			"scheduled_time": schema.StringAttribute{
-				Required: true,
-			},
 
 			// Optional
+			"repeat": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString(empty),
+			},
 			"status": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
@@ -82,6 +74,11 @@ func ScheduledTaskSchema() schema.Schema {
 			"task_type": schema.StringAttribute{
 				Optional: true,
 				Computed: true,
+			},
+			"scheduled_time": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString(empty),
 			},
 			"next_scheduled_time": schema.StringAttribute{
 				Optional: true,
@@ -117,6 +114,8 @@ func (s *ScheduledTaskModel) ParseCron(cronExpr string) error {
 		s.Repeat = types.StringValue(weekly)
 	case isMonthly(cronExpr):
 		s.Repeat = types.StringValue(monthly)
+	default:
+		s.Repeat = types.StringValue(cronExpr)
 	}
 
 	return nil

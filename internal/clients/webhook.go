@@ -43,6 +43,7 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		Filter:     w.Filter.ValueString(),
 		Prompt:     w.Prompt.ValueString(),
 		Source:     w.Source.ValueString(),
+		CreatedBy:  w.CreatedBy.ValueString(),
 	}
 
 	for _, a := range cs.agentList {
@@ -95,20 +96,12 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 }
 
 func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
-	by := ""
 	agentName := ""
 	destination := ""
 	at := w.CreatedAt.String()
 
 	if w.Communication != nil {
 		destination = w.Communication.Destination
-	}
-
-	for _, u := range cs.userList {
-		if strings.EqualFold(w.CreatedBy, u.UUID) {
-			by = u.Email
-			break
-		}
 	}
 
 	for _, a := range cs.agentList {
@@ -120,13 +113,13 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 
 	wh := &entities.WebhookModel{
 		CreatedAt:   types.StringValue(at),
-		CreatedBy:   types.StringValue(by),
 		Id:          types.StringValue(w.Id),
 		Name:        types.StringValue(w.Name),
 		Filter:      types.StringValue(w.Filter),
 		Source:      types.StringValue(w.Source),
 		Prompt:      types.StringValue(w.Prompt),
 		Agent:       types.StringValue(agentName),
+		CreatedBy:   types.StringValue(w.CreatedBy),
 		Destination: types.StringValue(destination),
 		Url:         types.StringValue(w.WebhookUrl),
 	}
