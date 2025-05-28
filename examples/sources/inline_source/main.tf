@@ -9,9 +9,9 @@ terraform {
 
 provider "kubiya" {}
 
-resource "kubiya_inline_source" "workflow_source" {
-  name = "workflow_source"
-  runner = "core-testing-2"
+resource "kubiya_inline_source" "hello_world_tool" {
+  name   = "integration_test_tool"
+  runner = ""
 
   # tools = jsonencode([])
 
@@ -100,7 +100,22 @@ resource "kubiya_inline_source" "workflow_source" {
   ])
 }
 
-output "workflows" {
-  value = kubiya_inline_source.workflow_source
+resource "kubiya_agent" "helloworld_teammate" {
+  name          = "integration_test_teammate"
+  description   = "HelloWorldTeammate is designed to interact with users and execute a simple 'Hello World' tool. This teammate requires minimal permissions and serves as a basic example of Kubiya's capabilities."
+  image         = "ghcr.io/kubiyabot/kubiya-agent:stable"
+  model         = "azure/gpt-4o"
+  runner        = "core-testing-1"
+  is_debug_mode = false
+
+  # environment_variables = {}
+  # integrations          = []
+  # links                 = []
+  # groups                = []
+  # secrets               = []
+  # sources               = []
+  # tool_sources          = []
+  # users                 = []
+  instructions = ""
 }
 

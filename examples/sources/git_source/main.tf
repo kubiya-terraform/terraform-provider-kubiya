@@ -1,19 +1,19 @@
 terraform {
   required_providers {
     kubiya = {
-      # source = "kubiya-terraform/kubiya"
-      source = "hashicorp.com/edu/kubiya"
+      source = "kubiya-terraform/kubiya"
+      # source = "hashicorp.com/edu/kubiya"
     }
   }
 }
 
 provider "kubiya" {}
 
-resource "kubiya_source" "item" {
-  dynamic_config = var.config_json
-  url            = "https://github.com/kubiyabot/community-tools/tree/main/just_in_time_access"
+resource "kubiya_source" "git_source" {
+  # dynamic_config = var.config_json
+  url            = "https://github.com/test-org-for-project/test-repo/blob/main/tools/test.yaml"
 }
 
 output "output" {
-  value = kubiya_source.item
+  value = kubiya_source.git_source
 }
