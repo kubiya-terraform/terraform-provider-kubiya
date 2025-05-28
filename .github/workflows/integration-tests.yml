@@ -1,0 +1,61 @@
+# Integration Tests workflow for Terraform Provider Kubiya
+name: Integration Tests
+
+# Trigger on pull requests to main branch
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'examples/**'
+      - '.github/workflows/integration-tests.yml'
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    # Only run if KUBIYA_API_KEY secret is available
+    if: ${{ secrets.KUBIYA_API_KEY != '' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Set up Go
+        uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.0"
+          terraform_wrapper: false
+
+      - name: Download Go modules
+        run: go mod download
+
+      - name: Verify Go modules
+        run: go mod verify
+
+      - name: Run integration tests
+        env:
+          KUBIYA_API_KEY: ${{ secrets.KUBIYA_API_KEY }}
+        run: |
+          cd test
+          go test -v -timeout 30m ./...
+
+      - name: Clean up Terraform state files
+        if: always()
+        run: |
+          find examples -name "*.tfstate*" -type f -delete
+          find examples -name ".terraform" -type d -exec rm -rf {} + || true
+          find examples -name ".terraform.lock.hcl" -type f -delete || true 
