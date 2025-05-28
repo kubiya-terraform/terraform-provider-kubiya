@@ -5,12 +5,6 @@ name: Integration Tests
 on:
   pull_request:
     branches: [ main ]
-    paths:
-      - '**.go'
-      - 'go.mod'
-      - 'go.sum'
-      - 'examples/**'
-      - '.github/workflows/integration-tests.yml'
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 concurrency:
