@@ -12,7 +12,7 @@ import (
 const (
 	version = "dev"
 	address = "hashicorp.com/edu/Kubiya"
-)
+)dasd
 
 func main() {
 	ctx := context.Background()
