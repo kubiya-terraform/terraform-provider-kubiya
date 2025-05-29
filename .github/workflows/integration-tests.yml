@@ -16,13 +16,14 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # KUBIYA_API_KEY secret validation
-      - name: Exit if secret is missing
-        if: ${{ secrets.KUBIYA_API_KEY == '' }}
-        run: echo "KUBIYA_API_KEY not set" && exit 1
-      - name: Run integration tests
-        if: ${{ secrets.KUBIYA_API_KEY != '' }}
-        run: echo "Running integration tests"
+      - name: "Check if KUBIYA_API_KEY is missing"
+        env:
+          my_secret: ${{ secrets.KUBIYA_API_KEY }}
+        if: ${{ env.my_secret == '' }}
+        run: |
+          echo '❌ The secret "KUBIYA_API_KEY" is not set.'
+          echo '➡️  Please go to "Settings > Secrets > Actions" to create it.'
+          exit 1
         
       - name: Checkout code
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
