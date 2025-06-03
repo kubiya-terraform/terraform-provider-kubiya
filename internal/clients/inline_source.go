@@ -15,54 +15,13 @@ import (
 
 func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
 	type (
-		arg struct {
-			Name        string   `json:"name"`
-			Type        string   `json:"type,omitempty"`
-			Description string   `json:"description"`
-			Required    bool     `json:"required,omitempty"`
-			Default     string   `json:"default,omitempty"`
-			Options     []string `json:"options,omitempty"`
-			OptionsFrom *struct {
-				Image  string `json:"image"`
-				Script string `json:"script"`
-			} `json:"options_from,omitempty"`
-		}
-
-		fileSpec struct {
-			Source      string `json:"source,omitempty"`
-			Destination string `json:"destination"`
-			Content     string `json:"content,omitempty"`
-		}
-
-		inlineTool struct {
-			Icon        string `json:"icon_url,omitempty"`
-			Type        string `json:"type"`
-			Name        string `json:"name"`
-			Image       string `json:"image,omitempty"`
-			Content     string `json:"content,omitempty"`
-			Mermaid     string `json:"mermaid,omitempty"`
-			OnStart     string `json:"on_start,omitempty"`
-			OnBuild     string `json:"on_build,omitempty"`
-			OnComplete  string `json:"on_complete,omitempty"`
-			Description string `json:"description"`
-
-			Env        []string `json:"env,omitempty"`
-			Secrets    []string `json:"secrets,omitempty"`
-			Entrypoint []string `json:"entrypoint,omitempty"`
-
-			Args  []arg      `json:"args,omitempty"`
-			Files []fileSpec `json:"with_files,omitempty"`
-
-			LongRunning bool `json:"long_running,omitempty"`
-			Workflow    bool `json:"workflow,omitempty"`
-		}
-
 		request struct {
 			Name      string         `json:"name"`
 			Runner    string         `json:"runner"`
 			TaskId    string         `json:"task_id"`
 			ManagedBy string         `json:"managed_by"`
-			Tools     []inlineTool   `json:"inline_tools"`
+			Tools     interface{}    `json:"inline_tools"`
+			Workflows interface{}    `json:"inline_workflows"`
 			Config    map[string]any `json:"dynamic_config"`
 		}
 	)
@@ -71,21 +30,27 @@ func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
 		TaskId:    getTaskId(),
 		ManagedBy: getManagedBy(),
 		Config:    make(map[string]any),
-		Tools:     make([]inlineTool, 0),
 		Name:      e.Name.ValueString(),
 		Runner:    e.Runner.ValueString(),
 	}
 
-	if e.Tools.ValueString() != "" {
+	if e.Tools.ValueString() != "" && e.Tools.ValueString() != "{}" {
 		body := []byte(e.Tools.ValueString())
 		if err := json.Unmarshal(body, &req.Tools); err != nil {
 			return nil, err
 		}
 	}
 
-	if e.Config.ValueString() != "" {
+	if e.Config.ValueString() != "" && e.Config.ValueString() != "{}" {
 		body := []byte(e.Config.ValueString())
 		if err := json.Unmarshal(body, &req.Config); err != nil {
+			return nil, err
+		}
+	}
+
+	if e.Workflows.ValueString() != "" && e.Workflows.ValueString() != "{}" {
+		body := []byte(e.Workflows.ValueString())
+		if err := json.Unmarshal(body, &req.Workflows); err != nil {
 			return nil, err
 		}
 	}
@@ -116,17 +81,22 @@ func parseInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		return nil, err
 	}
 
-	config, err := json.Marshal(resp.Config)
+	configData, err := json.Marshal(resp.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	config, err := normalizeJSON(string(configData))
 	if err != nil {
 		return nil, err
 	}
 
 	result := &entities.InlineSourceModel{
+		Config: types.StringValue(config),
 		Id:     types.StringValue(resp.Id),
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
-		Config: types.StringValue(string(config)),
 	}
 
 	return result, nil
@@ -164,21 +134,22 @@ func parseNewInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 		return nil, err
 	}
 
-	config, err := json.Marshal(resp.Config)
+	configData, err := json.Marshal(resp.Config)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(resp.Errors) > 0 {
-		return nil, fmt.Errorf("errors: %+v", resp.Errors)
+	config, err := normalizeJSON(string(configData))
+	if err != nil {
+		return nil, err
 	}
 
 	result := &entities.InlineSourceModel{
+		Config: types.StringValue(config),
 		Id:     types.StringValue(resp.Id),
 		Name:   types.StringValue(resp.Name),
 		Type:   types.StringValue(resp.Type),
 		Runner: types.StringValue(resp.Runner),
-		Config: types.StringValue(string(config)),
 	}
 
 	return result, nil
@@ -186,53 +157,11 @@ func parseNewInlineSource(r io.Reader) (*entities.InlineSourceModel, error) {
 
 func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 	type (
-		arg struct {
-			Name        string   `json:"name"`
-			Type        string   `json:"type,omitempty"`
-			Description string   `json:"description"`
-			Required    bool     `json:"required,omitempty"`
-			Default     string   `json:"default,omitempty"`
-			Options     []string `json:"options,omitempty"`
-			OptionsFrom *struct {
-				Image  string `json:"image"`
-				Script string `json:"script"`
-			} `json:"options_from,omitempty"`
-		}
-
-		fileSpec struct {
-			Source      string `json:"source,omitempty"`
-			Destination string `json:"destination"`
-			Content     string `json:"content,omitempty"`
-		}
-
-		inlineTool struct {
-			Icon        string `json:"icon_url,omitempty"`
-			Type        string `json:"type"`
-			Name        string `json:"name"`
-			Image       string `json:"image,omitempty"`
-			Content     string `json:"content,omitempty"`
-			Mermaid     string `json:"mermaid,omitempty"`
-			OnStart     string `json:"on_start,omitempty"`
-			OnBuild     string `json:"on_build,omitempty"`
-			OnComplete  string `json:"on_complete,omitempty"`
-			Description string `json:"description"`
-
-			Env        []string `json:"env,omitempty"`
-			Secrets    []string `json:"secrets,omitempty"`
-			Entrypoint []string `json:"entrypoint,omitempty"`
-
-			Args  []arg      `json:"args,omitempty"`
-			Files []fileSpec `json:"with_files,omitempty"`
-
-			LongRunning bool `json:"long_running,omitempty"`
-			Workflow    bool `json:"workflow,omitempty"`
-		}
-
 		response struct {
-			Id        string       `json:"uuid"`
-			Type      string       `json:"type"`
-			Tools     []inlineTool `json:"tools"`
-			Workflows interface{}  `json:"workflows"`
+			Id        string           `json:"uuid"`
+			Type      string           `json:"type"`
+			Tools     interface{}      `json:"tools"`
+			Workflows []map[string]any `json:"workflows"`
 			Errors    []struct {
 				File    string `json:"file"`
 				Type    string `json:"type"`
@@ -250,25 +179,53 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 	if len(resp.Errors) >= 1 {
 		var err error
 		const t = "file: %s, type: %s, error: %s, details: %s"
-		for _, e := range resp.Errors {
-			err = errors.Join(err, eformat(t, e.File, e.Type, e.Error, e.Details))
+		for _, respError := range resp.Errors {
+			err = errors.Join(err, eformat(t, respError.File,
+				respError.Type, respError.Error, respError.Details))
 		}
 		return err
 	}
 
-	data, err := json.Marshal(resp.Tools)
-	if err != nil {
-		return err
+	if resp.Tools != nil {
+		toolsData, err := json.Marshal(resp.Tools)
+		if err != nil {
+			return err
+		}
+
+		normalized, err := normalizeJSON(string(toolsData))
+		if err != nil {
+			return err
+		}
+
+		if normalized == "[]" {
+			normalized = ""
+		}
+		e.Tools = types.StringValue(normalized)
 	}
 
-	tools, err := normalizeJSON(string(data))
-	if err != nil {
-		return err
+	if len(resp.Workflows) >= 1 {
+		workflowList := make([]map[string]any, 0)
+		for _, workflow := range resp.Workflows {
+			workflowList = append(workflowList, cleanMap(workflow))
+		}
+
+		data, err := json.Marshal(workflowList)
+		if err != nil {
+			return err
+		}
+
+		normalized, err := normalizeJSON(string(data))
+		if err != nil {
+			return err
+		}
+
+		if normalized == "[]" {
+			normalized = ""
+		}
+		e.Workflows = types.StringValue(normalized)
 	}
 
-	e.Tools = types.StringValue(tools)
-
-	return err
+	return nil
 }
 
 func (c *Client) DeleteInlineSource(ctx context.Context, e *entities.InlineSourceModel) error {
@@ -388,7 +345,7 @@ func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourc
 		id := result.Id.ValueString()
 		uri = c.uri(format(metadataUri, id))
 
-		resp, err = c.read(ctx, uri)
+		resp, err = c.read(ctx, uri, "exclude_workflows_tools=true")
 		if err != nil {
 			return nil, err
 		}

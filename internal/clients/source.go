@@ -83,12 +83,21 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 		return nil, err
 	}
 
-	r, err := newSource(resp)
+	result, err := newSource(resp)
 	if err != nil {
 		return nil, err
 	}
 
-	return fromSource(r, types.StringValue(""))
+	entity, err := fromSource(result, types.StringValue("{}"))
+	if err != nil {
+		return nil, err
+	}
+
+	if result.DynamicConfig == nil {
+		entity.DynamicConfig = types.StringValue("{}")
+	}
+
+	return entity, nil
 }
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
@@ -129,6 +138,10 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 		returnSource, err := fromSource(result, e.DynamicConfig)
 		if err != nil {
 			return nil, err
+		}
+
+		if result.DynamicConfig == nil {
+			returnSource.DynamicConfig = types.StringValue("{}")
 		}
 
 		return returnSource, nil

@@ -6,11 +6,24 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+)
+
+const (
+	empty   = ""
+	daily   = "daily"
+	hourly  = "hourly"
+	weekly  = "weekly"
+	monthly = "monthly"
+)
+
+var (
+	cronOptions = []string{daily, hourly, weekly, monthly}
 )
 
 type scheduledTask struct {
@@ -68,6 +81,10 @@ func newScheduledTask(body io.Reader) (*scheduledTask, error) {
 }
 
 func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
+	const (
+		layout = "2006-01-02T15:04:05"
+	)
+
 	var err error
 	result := &entities.ScheduledTaskModel{
 		Id:                types.StringValue(a.Id),
@@ -81,6 +98,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 		NextScheduledTime: types.StringValue(a.NextScheduledTime),
 	}
 
+	cron := ""
 	parameters := map[string]string{}
 	for key, val := range a.Parameters {
 		if key == "repeat" {
@@ -88,6 +106,7 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 				if _, ok = a.Parameters["cron_string"]; ok {
 					item := a.Parameters["cron_string"]
 					if _, ok = a.Parameters["cron_string"].(string); ok {
+						cron = item.(string)
 						if e := result.ParseCron(item.(string)); e != nil {
 							err = errors.Join(err, e)
 							continue
@@ -115,19 +134,17 @@ func fromScheduledTask(a *scheduledTask) (*entities.ScheduledTaskModel, error) {
 	}
 	result.Parameters = toMapType(parameters, err)
 
+	if t, _ := time.Parse(layout, a.ScheduledTime); t.IsZero() {
+		result.Repeat = types.StringValue(cron)
+		result.ScheduledTime = types.StringValue(empty)
+	}
+
 	return result, err
 }
 
 func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRequest, error) {
-	const (
-		empty   = ""
-		daily   = "daily"
-		hourly  = "hourly"
-		weekly  = "weekly"
-		monthly = "monthly"
-	)
-
 	var err error
+
 	result := &createScheduledTaskRequest{
 		CronString:  empty,
 		Agent:       e.Agent.ValueString(),
@@ -166,6 +183,11 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 		case monthly:
 			result.CronString = toMonthlyCron(result.ScheduledTime)
 		}
+	}
+
+	if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
+		err = nil
+		result.CronString = cron
 	}
 
 	return result, err
@@ -234,7 +256,16 @@ func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledT
 		}
 
 		if id, ok := tmp["task_id"]; ok {
-			return c.ReadScheduledTask(ctx, id)
+			var entity *entities.ScheduledTaskModel
+			if entity, err = c.ReadScheduledTask(ctx, id); err != nil {
+				return nil, err
+			}
+
+			if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
+				entity.Repeat = types.StringValue(cron)
+			}
+
+			return entity, nil
 		}
 
 		return nil, eformat("failed to createWithQueryParams scheduled task")

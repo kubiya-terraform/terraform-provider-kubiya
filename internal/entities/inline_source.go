@@ -8,15 +8,17 @@ import (
 )
 
 type InlineSourceModel struct {
-	Id     types.String `tfsdk:"id"`
-	Name   types.String `tfsdk:"name"`
-	Type   types.String `tfsdk:"type"`
-	Tools  types.String `tfsdk:"tools"`
-	Runner types.String `tfsdk:"runner"`
-	Config types.String `tfsdk:"dynamic_config"`
+	Id        types.String `tfsdk:"id"`
+	Name      types.String `tfsdk:"name"`
+	Type      types.String `tfsdk:"type"`
+	Tools     types.String `tfsdk:"tools"`
+	Runner    types.String `tfsdk:"runner"`
+	Workflows types.String `tfsdk:"workflows"`
+	Config    types.String `tfsdk:"dynamic_config"`
 }
 
 func InlineSourceSchema() schema.Schema {
+	const emptyJson = ""
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			// Computed
@@ -32,14 +34,6 @@ func InlineSourceSchema() schema.Schema {
 			},
 
 			// Required
-			"tools": schema.StringAttribute{
-				Required: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-					jsonNormalizationModifier(),
-				},
-			},
-
 			"name": schema.StringAttribute{
 				Required:            true,
 				Description:         "The name of the inline source tool",
@@ -52,6 +46,24 @@ func InlineSourceSchema() schema.Schema {
 				Optional:            true,
 				Description:         "The runner name",
 				MarkdownDescription: "The runner name to add for inline source",
+			},
+			"tools": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  defaultString(emptyJson),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizationModifier(),
+				},
+			},
+			"workflows": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  defaultString(emptyJson),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizationModifier(),
+				},
 			},
 			"dynamic_config": schema.StringAttribute{
 				Computed:            true,
