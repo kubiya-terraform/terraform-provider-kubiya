@@ -1,6 +1,7 @@
 terraform {
   required_providers {
     kubiya = {
+      # source = "local/kubiya"
       source = "kubiya-terraform/kubiya"
       # source = "hashicorp.com/edu/kubiya"
     }
@@ -45,3 +46,6 @@ resource "kubiya_agent" "helloworld_teammate" {
   instructions = ""
 }
 
+output "output" {
+  value = kubiya_inline_source.hello_world_tool
+}
