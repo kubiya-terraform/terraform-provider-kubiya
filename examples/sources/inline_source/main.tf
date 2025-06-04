@@ -119,3 +119,6 @@ resource "kubiya_agent" "helloworld_teammate" {
   instructions = ""
 }
 
+output "output" {
+  value = kubiya_inline_source.hello_world_tool
+}

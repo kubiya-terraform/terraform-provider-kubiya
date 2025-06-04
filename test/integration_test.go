@@ -116,7 +116,7 @@ func TestKubiyaSources(t *testing.T) {
 
 		terraform.InitAndApply(t, terraformOptions)
 
-		output := terraform.Output(t, terraformOptions, "inline_source")
+		output := terraform.Output(t, terraformOptions, "output")
 		t.Log(output)
 
 		output = terraform.Destroy(t, terraformOptions)
