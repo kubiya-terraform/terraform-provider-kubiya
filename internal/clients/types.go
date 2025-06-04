@@ -1,5 +1,7 @@
 package clients
 
+import "terraform-provider-kubiya/internal/clients/vendors"
+
 type Runner struct {
 	Url  string `json:"url"`
 	Name string `json:"name"`
@@ -42,14 +44,15 @@ type integration struct {
 
 type state struct {
 	//self         *user
-	userList        []*user
-	agentList       []*agent
-	groupList       []*group
-	modelList       []string
-	runnerList      []*runner
-	secretList      []*secret
-	sourceList      []*source
-	webhookList     []*webhook
-	knowledgeList   []*knowledge
-	integrationList []*integration
+	userList              []*user
+	agentList             []*agent
+	groupList             []*group
+	modelList             []string
+	runnerList            []*runner
+	secretList            []*secret
+	sourceList            []*source
+	webhookList           []*webhook
+	knowledgeList         []*knowledge
+	integrationList       []*integration
+	externalKnowledgeList []*vendors.BaseExternalKnowledge
 }

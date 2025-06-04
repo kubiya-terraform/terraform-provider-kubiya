@@ -7,6 +7,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"terraform-provider-kubiya/internal/clients/vendors"
 )
 
 type Client struct {
@@ -115,6 +117,12 @@ func (c *Client) state() (*state, error) {
 		err = errors.Join(err, e)
 	} else {
 		currentState.knowledgeList = append(make([]*knowledge, 0), knowledgeList...)
+	}
+
+	if externalKnowledgeList, e := c.externalKnowledge(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.externalKnowledgeList = append(make([]*vendors.BaseExternalKnowledge, 0), externalKnowledgeList...)
 	}
 
 	return &currentState, err
