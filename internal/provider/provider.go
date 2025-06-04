@@ -31,6 +31,7 @@ func (p *kubiyaProvider) Resources(context.Context) []func() resource.Resource {
 		NewSourceResource,
 		NewWebhookResource,
 		NewKnowledgeResource,
+		NewExternalKnowledgeResource,
 		NewIntegrationResource,
 		NewScheduledTaskResource,
 		NewSecreResource,
