@@ -43,10 +43,11 @@ type agent struct {
 	Metadata  *metadata         `json:"metadata"`
 	Variables map[string]string `json:"environment_variables"`
 
-	LlmModel       string `json:"llm_model,omitempty"`
-	Description    string `json:"description,omitempty"`
-	Organization   string `json:"organization,omitempty"`
-	AiInstructions string `json:"ai_instructions,omitempty"`
+	LlmModel       string        `json:"llm_model,omitempty"`
+	Description    string        `json:"description,omitempty"`
+	Organization   string        `json:"organization,omitempty"`
+	InlineTools    []interface{} `json:"inline_tools,omitempty"`
+	AiInstructions string        `json:"ai_instructions,omitempty"`
 }
 
 type starter struct {
@@ -89,8 +90,9 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		Integrations: make([]string, 0),
 		Variables:    make(map[string]string),
 
-		Tasks:    make([]task, 0),
-		Starters: make([]starter, 0),
+		Tasks:       make([]task, 0),
+		Starters:    make([]starter, 0),
+		InlineTools: make([]interface{}, 0),
 	}
 
 	for _, v := range cs.runnerList {
@@ -235,6 +237,8 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, eformat("LLM Model \"%s\" not valid. [%s]", model, models))
 	}
 
+	err = json.Unmarshal([]byte(a.InlineTools.ValueString()), &result.InlineTools)
+
 	return result, err
 }
 
@@ -332,6 +336,14 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Sources = toListStringType(sourceList, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
+
+	t, err := json.Marshal(a.InlineTools)
+	if err != nil {
+		return result, err
+	}
+
+	inlineTools, err := normalizeJSON(string(t))
+	result.InlineTools = types.StringValue(inlineTools)
 
 	return result, err
 }

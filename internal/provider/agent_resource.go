@@ -144,6 +144,10 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		updatedState.Instructions = plan.Instructions
 	}
 
+	if !plan.InlineTools.IsNull() && !plan.InlineTools.IsUnknown() {
+		updatedState.InlineTools = plan.InlineTools
+	}
+
 	if !plan.Links.IsNull() && !plan.Links.IsUnknown() {
 		updatedState.Links = plan.Links
 	}
