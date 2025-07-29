@@ -6,7 +6,9 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -24,6 +26,9 @@ type WebhookModel struct {
 	Destination types.String `tfsdk:"destination"`
 	TeamName    types.String `tfsdk:"team_name"`
 	Method      types.String `tfsdk:"method"`
+
+	Runner   types.String `tfsdk:"runner"`
+	Workflow types.String `tfsdk:"workflow"`
 }
 
 // Custom validator for team_name based on method
@@ -96,6 +101,7 @@ func (v destinationValidator) ValidateString(ctx context.Context, req validator.
 }
 
 func WebhookSchema() schema.Schema {
+	const emptyJson = ""
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id":         schema.StringAttribute{Computed: true},
@@ -103,9 +109,17 @@ func WebhookSchema() schema.Schema {
 			"created_by": schema.StringAttribute{Computed: true},
 			"url":        schema.StringAttribute{Computed: true},
 			"name":       schema.StringAttribute{Required: true},
-			"agent":      schema.StringAttribute{Required: true},
-			"source":     schema.StringAttribute{Required: true},
-			"prompt":     schema.StringAttribute{Required: true},
+			"agent":      schema.StringAttribute{Optional: true},
+			"runner":     schema.StringAttribute{Optional: true},
+			"workflow": schema.StringAttribute{Computed: true,
+				Optional: true,
+				Default:  defaultString(emptyJson),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizationModifier(),
+				}},
+			"source": schema.StringAttribute{Optional: true},
+			"prompt": schema.StringAttribute{Required: true},
 			"destination": schema.StringAttribute{
 				Optional: true,
 				Validators: []validator.String{
