@@ -27,6 +27,9 @@ type (
 		TaskId        string         `json:"task_id"`
 		ManagedBy     string         `json:"managed_by"`
 		Communication *communication `json:"communication"`
+
+		Runner   string `json:"runner,omitempty"`
+		Workflow string `json:"workflow,omitempty"`
 	}
 
 	communication struct {
@@ -35,7 +38,7 @@ type (
 	}
 )
 
-func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
+func toWebhook(w *entities.WebhookModel, cs *state) (*webhook, error) {
 	wh := &webhook{
 		Id:         w.Id.ValueString(),
 		WebhookUrl: w.Url.ValueString(),
@@ -44,6 +47,15 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		Prompt:     w.Prompt.ValueString(),
 		Source:     w.Source.ValueString(),
 		CreatedBy:  w.CreatedBy.ValueString(),
+		Runner:     w.Runner.ValueString(),
+		Workflow:   w.Workflow.ValueString(),
+	}
+
+	var tmp interface{}
+	if wh.Workflow != "" && wh.Workflow != "{}" {
+		if err := json.Unmarshal([]byte(wh.Workflow), &tmp); err != nil {
+			return nil, err
+		}
 	}
 
 	for _, a := range cs.agentList {
@@ -92,10 +104,10 @@ func toWebhook(w *entities.WebhookModel, cs *state) *webhook {
 		wh.Communication = &communication{Method: method, Destination: destination}
 	}
 
-	return wh
+	return wh, nil
 }
 
-func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
+func fromWebhook(w *webhook, cs *state) (*entities.WebhookModel, error) {
 	agentName := ""
 	destination := ""
 	at := w.CreatedAt.String()
@@ -111,6 +123,11 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		}
 	}
 
+	wf, err := normalizeJSON(w.Workflow)
+	if err != nil {
+		return nil, err
+	}
+
 	wh := &entities.WebhookModel{
 		CreatedAt:   types.StringValue(at),
 		Id:          types.StringValue(w.Id),
@@ -122,6 +139,8 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		CreatedBy:   types.StringValue(w.CreatedBy),
 		Destination: types.StringValue(destination),
 		Url:         types.StringValue(w.WebhookUrl),
+		Workflow:    types.StringValue(wf),
+		Runner:      types.StringValue(w.Runner),
 	}
 
 	// Set method and team_name fields
@@ -144,7 +163,7 @@ func fromWebhook(w *webhook, cs *state) *entities.WebhookModel {
 		}
 	}
 
-	return wh
+	return wh, nil
 }
 
 func (c *Client) ReadWebhook(_ context.Context, entity *entities.WebhookModel) error {
@@ -159,7 +178,11 @@ func (c *Client) ReadWebhook(_ context.Context, entity *entities.WebhookModel) e
 
 		for _, w := range cs.webhookList {
 			if equal(w.Id, id) || equal(w.Name, name) {
-				entity = fromWebhook(w, cs)
+				entity, err = fromWebhook(w, cs)
+				if err != nil {
+					return err
+				}
+
 				break
 			}
 		}
@@ -209,6 +232,13 @@ func (c *Client) DeleteWebhook(ctx context.Context, entity *entities.WebhookMode
 
 func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookModel) error {
 	if entity != nil {
+		wf := entity.Workflow.ValueString()
+		agentId := entity.Agent.ValueString()
+
+		if (wf == "" && agentId == "") || (wf != "" && agentId != "") {
+			return fmt.Errorf("workflow or agent is required")
+		}
+
 		const (
 			path = "/api/v1/event/%s"
 		)
@@ -222,7 +252,10 @@ func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookMode
 
 		uri := c.uri(format(path, id))
 
-		data := toWebhook(entity, cs)
+		data, err := toWebhook(entity, cs)
+		if err != nil {
+			return err
+		}
 		data.ManagedBy, data.TaskId = managedBy()
 
 		body, err := toJson(data)
@@ -241,7 +274,7 @@ func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookMode
 			return err
 		}
 
-		entity = fromWebhook(r, cs)
+		entity, err = fromWebhook(r, cs)
 
 		return err
 	}
@@ -250,6 +283,13 @@ func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookMode
 
 func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookModel) (*entities.WebhookModel, error) {
 	if entity != nil {
+		wf := entity.Workflow.ValueString()
+		agentId := entity.Agent.ValueString()
+
+		if (wf == "" && agentId == "") || (wf != "" && agentId != "") {
+			return nil, fmt.Errorf("workflow or agent is required")
+		}
+
 		cs, err := c.state()
 		if err != nil {
 			return nil, err
@@ -257,7 +297,10 @@ func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookMode
 
 		uri := c.uri("/api/v1/event")
 
-		data := toWebhook(entity, cs)
+		data, err := toWebhook(entity, cs)
+		if err != nil {
+			return nil, err
+		}
 		data.ManagedBy, data.TaskId = managedBy()
 
 		body, err := toJson(data)
@@ -276,7 +319,7 @@ func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookMode
 			return nil, err
 		}
 
-		return fromWebhook(r, cs), err
+		return fromWebhook(r, cs)
 	}
 
 	return nil, fmt.Errorf("param entity (*entities.WebhookModel) is nil")
