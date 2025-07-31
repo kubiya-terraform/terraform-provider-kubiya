@@ -4,7 +4,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -39,7 +41,8 @@ type AgentModel struct {
 	Sources      types.List     `tfsdk:"sources"`
 	Secrets      types.List     `tfsdk:"secrets"`
 	Starters     []StarterModel `tfsdk:"starters"`
-	Tools        types.List     `tfsdk:"tool_sources"`
+	InlineTools  types.String   `tfsdk:"inline_tools"`
+	Tools        types.List     `tfsdk:"tools"`
 	Integrations types.List     `tfsdk:"integrations"`
 	Variables    types.Map      `tfsdk:"environment_variables"`
 }
@@ -51,6 +54,7 @@ type StarterModel struct {
 
 func AgentSchema() schema.Schema {
 	const (
+		emptyJson    = ""
 		defaultModel = "gpt-4o"
 		defaultImage = "ghcr.io/kubiyabot/kubiya-agent:stable"
 	)
@@ -192,6 +196,15 @@ func AgentSchema() schema.Schema {
 				ElementType:         types.StringType,
 				Description:         "A list of integrations associated with the agent",
 				MarkdownDescription: "An array of integrations related to the agent",
+			},
+			"inline_tools": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  defaultString(emptyJson),
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+					jsonNormalizationModifier(),
+				},
 			},
 			"environment_variables": schema.MapAttribute{
 				Computed:            true,
