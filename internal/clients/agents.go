@@ -43,10 +43,11 @@ type agent struct {
 	Metadata  *metadata         `json:"metadata"`
 	Variables map[string]string `json:"environment_variables"`
 
-	LlmModel       string `json:"llm_model,omitempty"`
-	Description    string `json:"description,omitempty"`
-	Organization   string `json:"organization,omitempty"`
-	AiInstructions string `json:"ai_instructions,omitempty"`
+	LlmModel       string        `json:"llm_model,omitempty"`
+	Description    string        `json:"description,omitempty"`
+	Organization   string        `json:"organization,omitempty"`
+	AiInstructions string        `json:"ai_instructions,omitempty"`
+	Workflows      []interface{} `json:"workflows,omitempty"`
 }
 
 type starter struct {
@@ -235,6 +236,13 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		err = errors.Join(err, eformat("LLM Model \"%s\" not valid. [%s]", model, models))
 	}
 
+	if a.Workflows.ValueString() != "" && a.Workflows.ValueString() != "{}" {
+		body := []byte(a.Workflows.ValueString())
+		if err := json.Unmarshal(body, &result.Workflows); err != nil {
+			return nil, err
+		}
+	}
+
 	return result, err
 }
 
@@ -315,6 +323,23 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 				break
 			}
 		}
+	}
+
+	if a.Workflows != nil {
+		data, err := json.Marshal(a.Workflows)
+		if err != nil {
+			return result, err
+		}
+
+		normalized, err := normalizeJSON(string(data))
+		if err != nil {
+			return result, err
+		}
+
+		if normalized == "[]" {
+			normalized = ""
+		}
+		result.Workflows = types.StringValue(normalized)
 	}
 
 	result.Tools = toListStringType(a.Tools, err)
