@@ -17,6 +17,13 @@ resource "kubiya_webhook" "my_webhook" {
   method      = "Slack"
   destination = "#devops-call-ds"
   filter      = ""
+}
+
+resource "kubiya_webhook" "webhook_with_workflow" {
+  name   = "with-workflow"
+  source = "datadog"
+  prompt = "Please process the request."
+  filter = ""
   workflow = jsonencode({
     name        = "maayanbauer2"
     description = "Example DAG demonstrating data flow between tool steps"
@@ -98,9 +105,13 @@ resource "kubiya_webhook" "my_webhook" {
       }
     ]
   })
-  runner = ""
+  runner = "runner"
 }
 
 output "wh" {
   value = kubiya_webhook.my_webhook
+}
+
+output "wh_with_wf" {
+  value = kubiya_webhook.webhook_with_workflow
 }
