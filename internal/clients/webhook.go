@@ -104,6 +104,10 @@ func toWebhook(w *entities.WebhookModel, cs *state) (*webhook, error) {
 		wh.Communication = &communication{Method: method, Destination: destination}
 	}
 
+	if wh.Communication == nil {
+		wh.Communication = &communication{Method: "http", Destination: ""}
+	}
+
 	return wh, nil
 }
 
