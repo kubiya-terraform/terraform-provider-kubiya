@@ -58,6 +58,17 @@ func toWebhook(w *entities.WebhookModel, cs *state) (*webhook, error) {
 		}
 	}
 
+	data := w.Workflow.ValueString()
+	normalized, err := normalizeJSON(string(data))
+	if err != nil {
+		return wh, err
+	}
+
+	if normalized == "[]" {
+		normalized = ""
+	}
+	wh.Workflow = normalized
+
 	for _, a := range cs.agentList {
 		if equal(a.Name, w.Agent.ValueString()) {
 			wh.AgentId = a.Uuid
@@ -111,7 +122,7 @@ func toWebhook(w *entities.WebhookModel, cs *state) (*webhook, error) {
 			wh.Communication.Method = "http"
 		}
 		if wh.Communication.Destination == "" {
-			wh.Communication.Destination = ""
+			wh.Communication.Destination = "webhook"
 		}
 	}
 
@@ -137,6 +148,10 @@ func fromWebhook(w *webhook, cs *state) (*entities.WebhookModel, error) {
 	wf, err := normalizeJSON(w.Workflow)
 	if err != nil {
 		return nil, err
+	}
+
+	if wf == "[]" {
+		wf = ""
 	}
 
 	wh := &entities.WebhookModel{
