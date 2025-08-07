@@ -10,7 +10,7 @@ terraform {
 provider "kubiya" {}
 
 resource "kubiya_integration" "integration" {
-  name        = "mevrat-aws"
+  name = "integration-test-aws"
   description = "main aws account"
 
   configs = [

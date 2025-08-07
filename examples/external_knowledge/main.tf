@@ -28,8 +28,6 @@ output "example_details" {
   value = {
     id         = kubiya_external_knowledge.example.id
     vendor     = kubiya_external_knowledge.example.vendor
-    org        = kubiya_external_knowledge.example.org
-    start_date = kubiya_external_knowledge.example.start_date
     config     = kubiya_external_knowledge.example.config
   }
 } 

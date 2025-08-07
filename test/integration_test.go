@@ -8,7 +8,7 @@ import (
 )
 
 func TestKubiyaAgent(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	apiKey := os.Getenv("KUBIYA_API_KEY")
 	if apiKey == "" {
