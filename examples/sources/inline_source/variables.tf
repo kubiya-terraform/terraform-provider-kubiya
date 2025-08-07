@@ -27,7 +27,7 @@ variable "tool_description" {
 variable "source_runner" {
   description = "inline source runner"
   type        = string
-  default     = "runnerv2-5-vcluster"
+  default = "core-testing-1"
 }
 variable "source_config" {
   description = "List of Kubiya integrations to enable. Supports multiple values. For AWS integration, the main account must be provided."
