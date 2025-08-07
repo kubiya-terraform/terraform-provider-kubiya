@@ -14,7 +14,6 @@ provider "kubiya" {
 }
 
 resource "kubiya_agent" "agent" {
-
   //Mandatory Fields
   name = "Mevrat-Camel-Case"             //String
   runner = "core-testing-1"           //String
