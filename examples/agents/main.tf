@@ -17,7 +17,7 @@ resource "kubiya_agent" "agent" {
 
   //Mandatory Fields
   name = "Mevrat-Camel-Case"             //String
-  runner = "runnerv2-5-vcluster"           //String
+  runner = "core-testing-1"           //String
   description  = "This agent can perform various Kubernetes tasks using kubectl"
   instructions = "You are an AI agent specialized in managing Kubernetes clusters using kubectl. Your tasks include monitoring pod statuses, scaling deployments, updating container images, and reporting issues to JIRA."
 
