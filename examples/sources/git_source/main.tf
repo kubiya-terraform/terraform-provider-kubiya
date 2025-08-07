@@ -10,7 +10,6 @@ terraform {
 provider "kubiya" {}
 
 resource "kubiya_source" "git_source" {
-  # dynamic_config = var.config_json
   url            = "https://github.com/test-org-for-project/test-repo/blob/main/tools/test.yaml"
 }
 
