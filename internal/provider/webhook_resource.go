@@ -2,9 +2,11 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
@@ -108,21 +110,76 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 	var plan entities.WebhookModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
+	// Normalize workflow JSON before sending to backend
+	workflow := plan.Workflow.ValueString()
+	if workflow != "" {
+		var jsonRaw json.RawMessage
+		if err := json.Unmarshal([]byte(workflow), &jsonRaw); err != nil {
+			resp.Diagnostics.AddError(
+				"Invalid JSON in Workflow",
+				"Failed to parse workflow JSON: "+err.Error(),
+			)
+			return
+		}
+		normalized, err := json.Marshal(jsonRaw)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"JSON Normalization Failed",
+				"Failed to normalize workflow JSON: "+err.Error(),
+			)
+			return
+		}
+		plan.Workflow = types.StringValue(string(normalized))
+	}
+
+	// Handle agent field: ensure empty string is treated as null
+	if plan.Agent.ValueString() == "" {
+		plan.Agent = types.StringNull()
+	}
+
+	// Call backend API to create webhook
 	state, err := r.client.CreateWebhook(ctx, &plan)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"failed to create webhook",
-			"failed to create webhook. Error: "+err.Error(),
+			"Failed to Create Webhook",
+			"Failed to create webhook. Error: "+err.Error(),
 		)
 		return
 	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
+	// Normalize workflow JSON from backend response
+	if state.Workflow.ValueString() != "" {
+		var jsonRaw json.RawMessage
+		if err := json.Unmarshal([]byte(state.Workflow.ValueString()), &jsonRaw); err == nil {
+			normalized, err := json.Marshal(jsonRaw)
+			if err == nil {
+				state.Workflow = types.StringValue(string(normalized))
+			} else {
+				resp.Diagnostics.AddWarning(
+					"JSON Normalization Warning",
+					"Failed to normalize workflow JSON from backend: "+err.Error(),
+				)
+			}
+		} else {
+			resp.Diagnostics.AddWarning(
+				"Invalid JSON in Backend Response",
+				"Backend returned invalid workflow JSON: "+err.Error(),
+			)
+		}
+	}
+
+	// Handle agent field from backend response: convert empty string to null
+	if state.Agent.ValueString() == "" {
+		state.Agent = types.StringNull()
+	}
+
+	// Set state
+	diags = resp.State.Set(ctx, state)
+	resp.Diagnostics.Append(diags...)
 }
 
 func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
