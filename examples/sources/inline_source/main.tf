@@ -9,11 +9,28 @@ terraform {
 
 provider "kubiya" {}
 
-resource "kubiya_inline_source" "hello_world_tool" {
-  name   = "integration_test_tool"
-  runner = ""
+resource "kubiya_inline_source" "tools_source" {
+  name   = "tools_source"
+  runner = "core-testing-2"
 
-  # tools = jsonencode([])
+  tools = jsonencode([
+    {
+      name        = "hello_world_tool update"
+      description = "A simple tool that prints 'Hello World' to the console. update"
+      image       = "python:3.9"
+      content     = "print('Hello World update') update"
+      type        = ""
+    }
+  ])
+}
+
+output "tools" {
+  value = kubiya_inline_source.tools_source
+}
+
+resource "kubiya_inline_source" "workflow_source" {
+  name   = "workflow_source"
+  runner = "core-testing-2"
 
   workflows = jsonencode([
     {
@@ -100,6 +117,7 @@ resource "kubiya_inline_source" "hello_world_tool" {
   ])
 }
 
-output "output" {
-  value = kubiya_inline_source.hello_world_tool
+
+output "workflows" {
+  value = kubiya_inline_source.workflow_source
 }
