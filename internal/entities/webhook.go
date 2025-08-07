@@ -179,7 +179,7 @@ func (m jsonNormalizationModifierWH) PlanModifyString(_ context.Context, req pla
 // nullIfEmptyModifier ensures empty strings are treated as null.
 type nullIfEmptyModifier struct{}
 
-func (m nullIfEmptyModifier) Description(ctx context.Context) string {
+func (m nullIfEmptyModifier) Description(_ context.Context) string {
 	return "Converts empty strings to null"
 }
 
