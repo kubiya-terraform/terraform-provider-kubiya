@@ -117,7 +117,7 @@ resource "kubiya_inline_source" "workflow_source" {
   ])
 }
 
+
 output "workflows" {
   value = kubiya_inline_source.workflow_source
 }
-
