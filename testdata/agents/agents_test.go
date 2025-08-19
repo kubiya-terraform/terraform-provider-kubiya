@@ -15,8 +15,8 @@ func TestTerraformAgentExample(t *testing.T) {
 
 	defer terraform.Destroy(t, options)
 
-	initResult := terraform.Init(t, options)
-	planResult := terraform.Plan(t, options)
+	//initResult := terraform.Init(t, options)
+	//planResult := terraform.Plan(t, options)
 	terraform.Get(t, options)
 
 	show := terraform.InitAndPlan(t, options)

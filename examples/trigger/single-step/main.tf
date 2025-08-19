@@ -1,7 +1,8 @@
 terraform {
   required_providers {
     kubiya = {
-      source = "kubiya-terraform/kubiya"
+      # source = "kubiya-terraform/kubiya"
+      source = "hashicorp.com/edu/kubiya"
     }
   }
 }
