@@ -43,6 +43,23 @@ func (c *Client) downloadFile(uri, path string) error {
 	return nil
 }
 
+func (c *Client) uriWithHost(host, path string) string {
+	const (
+		slash  = "/"
+		layout = "%s/%s"
+	)
+
+	for strings.HasPrefix(path, slash) {
+		path = strings.TrimPrefix(path, slash)
+	}
+
+	for strings.HasSuffix(host, slash) {
+		host = strings.TrimSuffix(host, slash)
+	}
+
+	return format(layout, host, path)
+}
+
 func (c *Client) auth(req *http.Request) *http.Request {
 	const (
 		authLayout = "UserKey %s"
