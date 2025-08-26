@@ -36,6 +36,7 @@ func (p *kubiyaProvider) Resources(context.Context) []func() resource.Resource {
 		NewScheduledTaskResource,
 		NewSecreResource,
 		NewInlineSourceResource,
+		NewTriggerResource,
 	}
 }
 
