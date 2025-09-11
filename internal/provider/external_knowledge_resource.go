@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 var (
@@ -24,6 +26,13 @@ func NewExternalKnowledgeResource() resource.Resource {
 }
 
 func (r *externalKnowledgeResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Start tracing for the read operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_external_knowledge", "", kubiyasentry.OpResourceRead)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Reading external_knowledge resource", sentry.LevelInfo, nil)
+
 	var state entities.ExternalKnowledgeModel
 
 	diags := req.State.Get(ctx, &state)
@@ -47,6 +56,13 @@ func (r *externalKnowledgeResource) Schema(_ context.Context, _ resource.SchemaR
 }
 
 func (r *externalKnowledgeResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Start tracing for the delete operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_external_knowledge", "", kubiyasentry.OpResourceDelete)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Deleting external_knowledge resource", sentry.LevelInfo, nil)
+
 	var state entities.ExternalKnowledgeModel
 
 	diags := req.State.Get(ctx, &state)
@@ -64,27 +80,48 @@ func (r *externalKnowledgeResource) Delete(ctx context.Context, req resource.Del
 }
 
 func (r *externalKnowledgeResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Start tracing for the create operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_external_knowledge", "", kubiyasentry.OpResourceCreate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Creating external_knowledge resource", sentry.LevelInfo, nil)
+
 	var plan entities.ExternalKnowledgeModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
 	state, err := r.client.CreateExternalKnowledge(ctx, &plan)
 	if err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_external_knowledge", "", "create", err)
+
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
 		)
 		return
 	}
 
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *externalKnowledgeResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Start tracing for the update operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_external_knowledge", "", kubiyasentry.OpResourceUpdate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Updating external_knowledge resource", sentry.LevelInfo, nil)
+
 	var plan entities.ExternalKnowledgeModel
 	var state entities.ExternalKnowledgeModel
 

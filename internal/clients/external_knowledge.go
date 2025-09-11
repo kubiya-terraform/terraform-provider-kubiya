@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/getsentry/sentry-go"
+
 	"terraform-provider-kubiya/internal/clients/vendors"
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -125,8 +128,22 @@ func (c *Client) UpdateExternalKnowledge(ctx context.Context, e *entities.Extern
 }
 
 func (c *Client) CreateExternalKnowledge(ctx context.Context, e *entities.ExternalKnowledgeModel) (*entities.ExternalKnowledgeModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateExternalKnowledge")
+		span.SetData("client.resource_type", "external_knowledge")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating external knowledge via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateExternalKnowledge",
+	})
+
 	if e == nil {
-		return nil, fmt.Errorf("param entity (*entities.ExternalKnowledgeModel) is nil")
+		err := fmt.Errorf("param entity (*entities.ExternalKnowledgeModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	vendor := e.Vendor.ValueString()

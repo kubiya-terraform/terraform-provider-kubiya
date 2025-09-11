@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"terraform-provider-kubiya/internal/clients/vendors"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type Client struct {
@@ -21,7 +22,12 @@ func New(key, env string) (*Client, error) {
 	if len(key) == 0 {
 		return nil, eformat("ApiKey is missing or empty")
 	}
-	client := &http.Client{}
+
+	// Create HTTP client with Sentry tracing transport
+	client := &http.Client{
+		Transport: kubiyasentry.NewHTTPTransport(http.DefaultTransport),
+	}
+
 	host := ""
 	switch env {
 	case "production":

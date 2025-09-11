@@ -8,9 +8,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 func newInlineSource(e *entities.InlineSourceModel) (io.Reader, error) {
@@ -229,6 +231,18 @@ func parseInlineSourceTools(r io.Reader, e *entities.InlineSourceModel) error {
 }
 
 func (c *Client) DeleteInlineSource(ctx context.Context, e *entities.InlineSourceModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteInlineSource")
+		span.SetData("client.resource_type", "inline_source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting inline source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "DeleteInlineSource",
+	})
+
 	const (
 		requestUri = "/api/v1/sources/%s"
 	)
@@ -236,17 +250,32 @@ func (c *Client) DeleteInlineSource(ctx context.Context, e *entities.InlineSourc
 	uri := format(requestUri, id)
 	resp, err := c.deleteResp(ctx, c.uri(uri))
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return err
 	}
 
 	if resp.StatusCode >= http.StatusBadRequest {
-		return responseBodyError(resp)
+		err := responseBodyError(resp)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	return nil
 }
 
 func (c *Client) UpdateInlineSource(ctx context.Context, e *entities.InlineSourceModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "UpdateInlineSource")
+		span.SetData("client.resource_type", "inline_source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Updating inline source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "UpdateInlineSource",
+	})
+
 	if e != nil {
 		const (
 			updateUri   = "/api/v1/sources/%s"
@@ -257,16 +286,19 @@ func (c *Client) UpdateInlineSource(ctx context.Context, e *entities.InlineSourc
 
 		body, err := newInlineSource(e)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		e, err = parseInlineSource(resp)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
@@ -274,21 +306,38 @@ func (c *Client) UpdateInlineSource(ctx context.Context, e *entities.InlineSourc
 
 		resp, err = c.read(ctx, uri)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		err = parseInlineSourceTools(resp, e)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		return nil
 	}
 
-	return fmt.Errorf("param entity (*entities.InlineSourceModel) is nil")
+	err := fmt.Errorf("param entity (*entities.InlineSourceModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) ReadInlineSource(ctx context.Context, id string) (*entities.InlineSourceModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadInlineSource")
+		span.SetData("client.resource_type", "inline_source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading inline source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "ReadInlineSource",
+		"id":     id,
+	})
+
 	const (
 		readUri     = "/api/v1/sources/%s"
 		metadataUri = "/api/v1/sources/%s/metadata"
@@ -296,22 +345,26 @@ func (c *Client) ReadInlineSource(ctx context.Context, id string) (*entities.Inl
 	uri := format(readUri, id)
 	resp, err := c.read(ctx, c.uri(uri))
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	result, err := parseInlineSource(resp)
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	uri = c.uri(format(metadataUri, id))
 	resp, err = c.read(ctx, uri)
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	err = parseInlineSourceTools(resp, result)
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
@@ -319,6 +372,18 @@ func (c *Client) ReadInlineSource(ctx context.Context, id string) (*entities.Inl
 }
 
 func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourceModel) (*entities.InlineSourceModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateInlineSource")
+		span.SetData("client.resource_type", "inline_source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating inline source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateInlineSource",
+	})
+
 	if e != nil {
 		const (
 			createUri   = "/api/v1/sources"
@@ -329,16 +394,19 @@ func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourc
 
 		body, err := newInlineSource(e)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		resp, err := c.create(ctx, uri, body)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		result, err := parseNewInlineSource(resp)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -347,16 +415,20 @@ func (c *Client) CreateInlineSource(ctx context.Context, e *entities.InlineSourc
 
 		resp, err = c.read(ctx, uri, "exclude_workflows_tools=true")
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		err = parseInlineSourceTools(resp, result)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("param entity (*entities.InlineSourceModel) is nil")
+	err := fmt.Errorf("param entity (*entities.InlineSourceModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return nil, err
 }
