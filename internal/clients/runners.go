@@ -50,6 +50,13 @@ type runner struct {
 }
 
 func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -57,27 +64,33 @@ func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) e
 		span.SetData("client.resource_type", "runner")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Reading runner via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "ReadRunner",
-		"uri":    "/api/v3/runners/%s/describe",
-	})
-
 	if entity == nil {
+		logger.Error("ReadRunner called with nil entity")
 		err := fmt.Errorf("param entity (*entities.RunnerModel) is nil")
 		kubiyasentry.RecordError(ctx, err)
 		return err
 	}
 
+	runnerName := entity.Name.ValueString()
+
+	logger.Debug("Reading runner",
+		"runner_name", runnerName)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading runner via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "ReadRunner",
+		"uri":         "/api/v3/runners/%s/describe",
+		"runner_name": runnerName,
+	})
+
 	const uri = "/api/v3/runners/%s/describe"
-	name := entity.Name.ValueString()
 
 	// Add runner name to span
 	if span != nil {
-		span.SetData("runner.name", name)
+		span.SetData("runner.name", runnerName)
 	}
 
-	reqUri := c.uri(format(uri, name))
+	reqUri := c.uri(format(uri, runnerName))
 
 	// Add API call details to span
 	if span != nil {
@@ -92,6 +105,10 @@ func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) e
 
 	resp, err := c.read(ctx, reqUri)
 	if err != nil {
+		logger.Error("Failed to read runner via API",
+			"runner_name", runnerName,
+			"uri", reqUri,
+			"error", err.Error())
 		kubiyasentry.RecordError(ctx, err)
 		kubiyasentry.AddBreadcrumb("client", "API request failed", sentry.LevelError, map[string]interface{}{
 			"uri":   reqUri,
@@ -102,6 +119,9 @@ func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) e
 
 	var r runner
 	if err := json.NewDecoder(resp).Decode(&r); err != nil {
+		logger.Error("Failed to decode runner response",
+			"runner_name", runnerName,
+			"error", err.Error())
 		kubiyasentry.RecordError(ctx, err)
 		kubiyasentry.AddBreadcrumb("client", "Failed to decode response", sentry.LevelError, map[string]interface{}{
 			"error": err.Error(),
@@ -118,10 +138,21 @@ func (c *Client) ReadRunner(ctx context.Context, entity *entities.RunnerModel) e
 		"runner_type": r.RunnerType,
 	})
 
+	logger.Debug("Runner read successfully",
+		"runner_name", r.Name,
+		"runner_type", r.RunnerType)
+
 	return nil
 }
 
 func (c *Client) DeleteRunner(ctx context.Context, entity *entities.RunnerModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -129,60 +160,78 @@ func (c *Client) DeleteRunner(ctx context.Context, entity *entities.RunnerModel)
 		span.SetData("client.resource_type", "runner")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Deleting runner via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "DeleteRunner",
-		"uri":    "/api/v3/runners/%s",
-	})
-
-	if entity != nil {
-		const (
-			uri = "/api/v3/runners/%s"
-		)
-		name := entity.Name.ValueString()
-
-		// Add runner name to span
-		if span != nil {
-			span.SetData("runner.name", name)
-		}
-
-		reqUri := c.uri(format(uri, name))
-
-		// Add API call details to span
-		if span != nil {
-			span.SetData("api.uri", reqUri)
-			span.SetData("api.method", "DELETE")
-		}
-
-		kubiyasentry.AddBreadcrumb("client", "Making DELETE request", sentry.LevelInfo, map[string]interface{}{
-			"uri":    reqUri,
-			"method": "DELETE",
-		})
-
-		_, err := c.delete(ctx, reqUri)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			kubiyasentry.AddBreadcrumb("client", "Delete request failed", sentry.LevelError, map[string]interface{}{
-				"uri":   reqUri,
-				"error": err.Error(),
-			})
-			return err
-		}
-
-		// Success breadcrumb
-		kubiyasentry.AddBreadcrumb("client", "Successfully deleted runner", sentry.LevelInfo, map[string]interface{}{
-			"runner_name": name,
-		})
-
-		return nil
+	if entity == nil {
+		logger.Error("DeleteRunner called with nil entity")
+		err := fmt.Errorf("param entity (*entities.RunnerModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
-	err := fmt.Errorf("param entity (*entities.RunnerModel) is nil")
-	kubiyasentry.RecordError(ctx, err)
-	return err
+	runnerName := entity.Name.ValueString()
+
+	logger.Info("Starting runner deletion",
+		"runner_name", runnerName)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting runner via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "DeleteRunner",
+		"uri":         "/api/v3/runners/%s",
+		"runner_name": runnerName,
+	})
+
+	const uri = "/api/v3/runners/%s"
+
+	// Add runner name to span
+	if span != nil {
+		span.SetData("runner.name", runnerName)
+	}
+
+	reqUri := c.uri(format(uri, runnerName))
+
+	// Add API call details to span
+	if span != nil {
+		span.SetData("api.uri", reqUri)
+		span.SetData("api.method", "DELETE")
+	}
+
+	kubiyasentry.AddBreadcrumb("client", "Making DELETE request", sentry.LevelInfo, map[string]interface{}{
+		"uri":    reqUri,
+		"method": "DELETE",
+	})
+
+	_, err := c.delete(ctx, reqUri)
+	if err != nil {
+		logger.Error("Failed to delete runner via API",
+			"runner_name", runnerName,
+			"uri", reqUri,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.AddBreadcrumb("client", "Delete request failed", sentry.LevelError, map[string]interface{}{
+			"uri":   reqUri,
+			"error": err.Error(),
+		})
+		return err
+	}
+
+	// Success breadcrumb
+	kubiyasentry.AddBreadcrumb("client", "Successfully deleted runner", sentry.LevelInfo, map[string]interface{}{
+		"runner_name": runnerName,
+	})
+
+	logger.Info("Runner deleted successfully",
+		"runner_name", runnerName)
+
+	return nil
 }
 
 func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel) (*entities.RunnerModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -190,24 +239,30 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 		span.SetData("client.resource_type", "runner")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Creating runner via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "CreateRunner",
-		"uri":    "/api/v3/runners/%s",
-	})
-
 	if entity == nil {
+		logger.Error("CreateRunner called with nil entity")
 		err := fmt.Errorf("param entity (*entities.RunnerModel) is nil")
 		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
+	runnerName := entity.Name.ValueString()
+
+	logger.Info("Starting runner creation",
+		"runner_name", runnerName)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating runner via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "CreateRunner",
+		"uri":         "/api/v3/runners/%s",
+		"runner_name": runnerName,
+	})
+
 	const uri = "/api/v3/runners/%s"
-	name := entity.Name.ValueString()
 
 	// Add runner name to span
 	if span != nil {
-		span.SetData("runner.name", name)
+		span.SetData("runner.name", runnerName)
 	}
 
 	data := struct {
@@ -218,6 +273,9 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 
 	body, err := toJson(data)
 	if err != nil {
+		logger.Error("Failed to marshal runner data",
+			"runner_name", runnerName,
+			"error", err.Error())
 		kubiyasentry.RecordError(ctx, err)
 		kubiyasentry.AddBreadcrumb("client", "Failed to marshal JSON", sentry.LevelError, map[string]interface{}{
 			"error": err.Error(),
@@ -225,7 +283,7 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 		return nil, err
 	}
 
-	reqUri := c.uri(format(uri, name))
+	reqUri := c.uri(format(uri, runnerName))
 
 	// Add API call details to span
 	if span != nil {
@@ -240,6 +298,10 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 
 	_, err = c.create(ctx, reqUri, body)
 	if err != nil {
+		logger.Error("Failed to create runner via API",
+			"runner_name", runnerName,
+			"uri", reqUri,
+			"error", err.Error())
 		kubiyasentry.RecordError(ctx, err)
 		kubiyasentry.AddBreadcrumb("client", "API request failed", sentry.LevelError, map[string]interface{}{
 			"uri":   reqUri,
@@ -250,14 +312,20 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 
 	// Now call describe to get the runner type
 	kubiyasentry.AddBreadcrumb("client", "Reading runner details after creation", sentry.LevelInfo, map[string]interface{}{
-		"runner_name": name,
+		"runner_name": runnerName,
 	})
 
+	logger.Info("Runner created, reading details",
+		"runner_name", runnerName)
+
 	if err := c.ReadRunner(ctx, entity); err != nil {
+		logger.Error("Failed to read runner details after creation",
+			"runner_name", runnerName,
+			"error", err.Error())
 		readErr := fmt.Errorf("runner created but failed to read details: %v", err)
 		kubiyasentry.RecordError(ctx, readErr)
 		kubiyasentry.AddBreadcrumb("client", "Failed to read runner details", sentry.LevelError, map[string]interface{}{
-			"runner_name": name,
+			"runner_name": runnerName,
 			"error":       err.Error(),
 		})
 		return nil, readErr
@@ -265,9 +333,13 @@ func (c *Client) CreateRunner(ctx context.Context, entity *entities.RunnerModel)
 
 	// Success - add final breadcrumb
 	kubiyasentry.AddBreadcrumb("client", "Successfully created runner", sentry.LevelInfo, map[string]interface{}{
-		"runner_name": name,
+		"runner_name": runnerName,
 		"runner_type": entity.RunnerType.ValueString(),
 	})
+
+	logger.Info("Runner created successfully",
+		"runner_name", runnerName,
+		"runner_type", entity.RunnerType.ValueString())
 
 	return entity, nil
 }

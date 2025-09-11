@@ -19,7 +19,7 @@ const (
 
 func main() {
 	// Initialize Sentry
-	if err := kubiyasentry.Initialize(version); err != nil {
+	if err := kubiyasentry.Initialize(); err != nil {
 		// Log the error but continue - Sentry should not prevent the provider from running
 		log.Printf("Warning: Failed to initialize Sentry: %v", err)
 	}

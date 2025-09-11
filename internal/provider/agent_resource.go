@@ -29,27 +29,49 @@ func NewAgentResource() resource.Resource {
 }
 
 func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Start tracing for the read operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_agent", "", kubiyasentry.OpResourceRead)
+	defer kubiyasentry.FinishSpan(span)
+
 	var state entities.AgentModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for agent read", "error", "diagnostics error")
 		return
 	}
 
 	id := state.Id.ValueString()
+
+	// Log read operation
+	logger.Debug("Reading agent resource", "agent_id", id)
+	kubiyasentry.AddBreadcrumb("resource", "Reading agent resource", sentry.LevelDebug, map[string]interface{}{"agent_id": id})
 
 	updatedState, err := r.client.ReadAgent(ctx, id)
 	if err != nil || updatedState == nil {
 		if err == nil {
 			err = fmt.Errorf("agent %s not found", id)
 		}
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusNotFound)
+		logger.Error("Failed to read agent", "agent_id", id, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Debug("Successfully read agent", "agent_id", id)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
@@ -58,29 +80,64 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 }
 
 func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Start tracing for the delete operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_agent", "", kubiyasentry.OpResourceDelete)
+	defer kubiyasentry.FinishSpan(span)
+
 	var state entities.AgentModel
 
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for agent deletion", "error", "diagnostics error")
 		return
 	}
 
+	id := state.Id.ValueString()
+	name := state.Name.ValueString()
+
+	// Log deletion operation
+	logger.Info("Deleting agent resource", "agent_id", id, "agent_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Deleting agent resource", sentry.LevelInfo, map[string]interface{}{
+		"agent_id":   id,
+		"agent_name": name,
+	})
+
 	if err := r.client.DeleteAgent(ctx, &state); err != nil {
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		CaptureResourceError(ctx, "kubiya_agent", id, "delete", err)
+		logger.Error("Failed to delete agent", "agent_id", id, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(deleteAction, r.name, err.Error()),
 		)
+		return
 	}
+
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully deleted agent", "agent_id", id, "agent_name", name)
 }
 
 func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the create operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_agent", "", kubiyasentry.OpResourceCreate)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Creating agent resource", sentry.LevelInfo, nil)
 
 	var plan entities.AgentModel
 
@@ -89,14 +146,29 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get plan for agent creation", "error", "diagnostics error")
 		return
 	}
+
+	name := plan.Name.ValueString()
+
+	// Log creation operation
+	logger.Info("Creating agent resource",
+		"agent_name", name,
+		"model", plan.Model.ValueString(),
+		"runner", plan.Runner.ValueString(),
+	)
+	kubiyasentry.AddBreadcrumb("resource", "Creating agent resource", sentry.LevelInfo, map[string]interface{}{
+		"agent_name": name,
+	})
 
 	state, err := r.client.CreateAgent(ctx, &plan)
 	if err != nil {
 		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
 		CaptureResourceError(ctx, "kubiya_agent", "", "create", err)
+		logger.Error("Failed to create agent", "agent_name", name, "error", err)
 
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
@@ -105,17 +177,32 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	// Success
+	id := state.Id.ValueString()
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully created agent", "agent_id", id, "agent_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Start tracing for the update operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_agent", "", kubiyasentry.OpResourceUpdate)
+	defer kubiyasentry.FinishSpan(span)
+
 	var plan entities.AgentModel
 	var state entities.AgentModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get plan/state for agent update", "error", "diagnostics error")
 		return
 	}
 
@@ -185,13 +272,29 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		updatedState.Integrations = plan.Integrations
 	}
 
+	id := updatedState.Id.ValueString()
+	name := updatedState.Name.ValueString()
+
+	// Log update operation
+	logger.Info("Updating agent resource", "agent_id", id, "agent_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Updating agent resource", sentry.LevelInfo, map[string]interface{}{
+		"agent_id":   id,
+		"agent_name": name,
+	})
+
 	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		CaptureResourceError(ctx, "kubiya_agent", id, "update", err)
+		logger.Error("Failed to update agent", "agent_id", id, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(updateAction, r.name, err.Error()),
 		)
 		return
 	}
 
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully updated agent", "agent_id", id, "agent_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
@@ -199,18 +302,26 @@ func (r *agentResource) Metadata(_ context.Context, req resource.MetadataRequest
 	resp.TypeName = req.ProviderTypeName + "_agent"
 }
 
-func (r *agentResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *agentResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+	}
+
 	if req.ProviderData != nil {
 		var ok bool
 		var client *clients.Client
 
 		if client, ok = req.ProviderData.(*clients.Client); !ok {
+			logger.Error("Failed to configure agent resource", "error", "invalid provider data type")
 			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
 			return
 		}
 
 		r.name = "agent"
 		r.client = client
+		logger.Debug("Configured agent resource")
 	}
 }
 

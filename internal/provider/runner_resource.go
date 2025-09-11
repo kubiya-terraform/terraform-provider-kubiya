@@ -26,12 +26,16 @@ func NewRunnerResource() resource.Resource {
 }
 
 func (r *runnerResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the read operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_runner", "", kubiyasentry.OpResourceRead)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Reading runner resource", sentry.LevelInfo, nil)
 
 	var state entities.RunnerModel
 
@@ -40,6 +44,7 @@ func (r *runnerResource) Read(ctx context.Context, req resource.ReadRequest, res
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for runner read", "error", "diagnostics error")
 		return
 	}
 
@@ -51,19 +56,22 @@ func (r *runnerResource) Read(ctx context.Context, req resource.ReadRequest, res
 		kubiyasentry.SetSpanData(span, "runner.name", name)
 	}
 
-	if err := r.client.ReadRunner(ctx, &state); err != nil {
-		// Record error in span and capture to Sentry
-		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_runner", name, "read", err)
+	// Log read operation
+	logger.Debug("Reading runner resource", "runner_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Reading runner resource", sentry.LevelDebug, map[string]interface{}{"runner_name": name})
 
+	if err := r.client.ReadRunner(ctx, &state); err != nil {
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusNotFound)
+		logger.Error("Failed to read runner", "runner_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(readAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Debug("Successfully read runner", "runner_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
@@ -75,12 +83,16 @@ func (r *runnerResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 }
 
 func (r *runnerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the create operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_runner", "", kubiyasentry.OpResourceCreate)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Creating runner resource", sentry.LevelInfo, nil)
 
 	var plan entities.RunnerModel
 
@@ -89,20 +101,26 @@ func (r *runnerResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get plan for runner create", "error", "diagnostics error")
 		return
 	}
 
 	// Add plan data to span
+	name := ""
 	if !plan.Name.IsNull() {
-		kubiyasentry.SetSpanData(span, "runner.name", plan.Name.ValueString())
+		name = plan.Name.ValueString()
+		kubiyasentry.SetSpanData(span, "runner.name", name)
 	}
+
+	// Log create operation
+	logger.Info("Creating runner resource", "runner_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Creating runner resource", sentry.LevelInfo, map[string]interface{}{"runner_name": name})
 
 	state, err := r.client.CreateRunner(ctx, &plan)
 	if err != nil {
-		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_runner", "", "create", err)
-
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		logger.Error("Failed to create runner", "runner_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
 		)
@@ -111,23 +129,27 @@ func (r *runnerResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Update span with created resource name
 	if state != nil && !state.Name.IsNull() {
-		name := state.Name.ValueString()
-		kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, name)
-		kubiyasentry.SetSpanData(span, "runner.created_name", name)
+		createdName := state.Name.ValueString()
+		kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, createdName)
+		kubiyasentry.SetSpanData(span, "runner.created_name", createdName)
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully created runner", "runner_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 func (r *runnerResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the delete operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_runner", "", kubiyasentry.OpResourceDelete)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Deleting runner resource", sentry.LevelInfo, nil)
 
 	var state entities.RunnerModel
 
@@ -136,6 +158,7 @@ func (r *runnerResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for runner delete", "error", "diagnostics error")
 		return
 	}
 
@@ -144,19 +167,22 @@ func (r *runnerResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, name)
 	kubiyasentry.SetSpanData(span, "runner.name", name)
 
-	if err := r.client.DeleteRunner(ctx, &state); err != nil {
-		// Record error in span and capture to Sentry
-		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_runner", name, "delete", err)
+	// Log delete operation
+	logger.Info("Deleting runner resource", "runner_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Deleting runner resource", sentry.LevelInfo, map[string]interface{}{"runner_name": name})
 
+	if err := r.client.DeleteRunner(ctx, &state); err != nil {
+		kubiyasentry.RecordError(ctx, err)
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		logger.Error("Failed to delete runner", "runner_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			resourceActionError(deleteAction, r.name, err.Error()),
 		)
 		return
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully deleted runner", "runner_name", name)
 	kubiyasentry.AddBreadcrumb("resource", "Successfully deleted runner "+name, sentry.LevelInfo, nil)
 }
 
@@ -164,17 +190,26 @@ func (r *runnerResource) Metadata(_ context.Context, req resource.MetadataReques
 	resp.TypeName = req.ProviderTypeName + "_runner"
 }
 
-func (r *runnerResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *runnerResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	if req.ProviderData != nil {
 		var ok bool
 		var client *clients.Client
 
 		if client, ok = req.ProviderData.(*clients.Client); !ok {
+			logger.Error("Failed to configure runner resource", "error", "invalid provider data type")
 			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
 			return
 		}
 
 		r.name = "runner"
 		r.client = client
+		logger.Debug("Successfully configured runner resource")
 	}
 }

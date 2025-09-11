@@ -49,6 +49,13 @@ func fromSecret(s *secret) *entities.SecretModel {
 }
 
 func (c *Client) ReadSecret(ctx context.Context, entity *entities.SecretModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -56,68 +63,103 @@ func (c *Client) ReadSecret(ctx context.Context, entity *entities.SecretModel) e
 		span.SetData("client.resource_type", "secret")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Reading secret via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "ReadSecret",
-	})
-
-	if entity != nil {
-		secretname := entity.Name.ValueString()
-		if entity.Name.ValueString() == "" {
-			err := fmt.Errorf("secret name is empty")
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		// get secret metadata
-		uri := c.uri(fmt.Sprintf("/api/v2/secrets/%s", secretname))
-
-		resp, err := c.read(ctx, uri)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		s := &secret{}
-		err = json.NewDecoder(resp).Decode(s)
-		if err != nil {
-			err = fmt.Errorf("failed to decode secret metadata - %s", err)
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		// get secret value
-		uri = c.uri(fmt.Sprintf("/api/v2/secrets/get_value/%s", secretname))
-		resp, err = c.read(ctx, uri)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		var secretValueEncoded string
-		err = json.NewDecoder(resp).Decode(&secretValueEncoded)
-		if err != nil {
-			err = fmt.Errorf("failed to read secret value - %s", err)
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		secretValue, err := b64.StdEncoding.DecodeString(string(secretValueEncoded))
-		if err != nil {
-			err = fmt.Errorf("failed to decode secret value - %s", err)
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		s.Value = string(secretValue)
-		*entity = *fromSecret(s)
-
-		return nil
+	if entity == nil {
+		logger.Error("ReadSecret called with nil entity")
+		err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
-	err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
-	kubiyasentry.RecordError(ctx, err)
-	return err
+	secretname := entity.Name.ValueString()
+	if secretname == "" {
+		logger.Error("ReadSecret called with empty secret name")
+		err := fmt.Errorf("secret name is empty")
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	logger.Debug("Reading secret",
+		"secret_name", secretname)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading secret via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "ReadSecret",
+		"secret_name": secretname,
+	})
+
+	// get secret metadata
+	uri := c.uri(fmt.Sprintf("/api/v2/secrets/%s", secretname))
+
+	resp, err := c.read(ctx, uri)
+	if err != nil {
+		logger.Error("Failed to read secret metadata",
+			"secret_name", secretname,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	s := &secret{}
+	err = json.NewDecoder(resp).Decode(s)
+	if err != nil {
+		logger.Error("Failed to decode secret metadata",
+			"secret_name", secretname,
+			"error", err.Error())
+		err = fmt.Errorf("failed to decode secret metadata - %s", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	// get secret value
+	uri = c.uri(fmt.Sprintf("/api/v2/secrets/get_value/%s", secretname))
+	resp, err = c.read(ctx, uri)
+	if err != nil {
+		logger.Error("Failed to read secret value",
+			"secret_name", secretname,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	var secretValueEncoded string
+	err = json.NewDecoder(resp).Decode(&secretValueEncoded)
+	if err != nil {
+		logger.Error("Failed to decode secret value response",
+			"secret_name", secretname,
+			"error", err.Error())
+		err = fmt.Errorf("failed to read secret value - %s", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	secretValue, err := b64.StdEncoding.DecodeString(string(secretValueEncoded))
+	if err != nil {
+		logger.Error("Failed to decode base64 secret value",
+			"secret_name", secretname,
+			"error", err.Error())
+		err = fmt.Errorf("failed to decode secret value - %s", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	s.Value = string(secretValue)
+	*entity = *fromSecret(s)
+
+	logger.Debug("Secret read successfully",
+		"secret_name", secretname,
+		"created_by", s.CreatedBy)
+
+	return nil
 }
 
 func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -125,56 +167,86 @@ func (c *Client) DeleteSecret(ctx context.Context, entity *entities.SecretModel)
 		span.SetData("client.resource_type", "secret")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Deleting secret via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "DeleteSecret",
-	})
-
-	if entity != nil {
-		const (
-			path   = "/api/v2/secrets/%s"
-			errMsg = "failed to delete secret - %s"
-		)
-
-		uri := c.uri(fmt.Sprintf(path, entity.Name.ValueString()))
-		resp, err := c.delete(ctx, uri)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		r := &struct {
-			Error string `json:"error"`
-		}{}
-
-		err = json.NewDecoder(resp).Decode(&r)
-		if err != nil || r == nil {
-			if err != nil {
-				kubiyasentry.RecordError(ctx, err)
-				return err
-			}
-			err = fmt.Errorf(errMsg, entity.Name)
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		if r.Error != "" {
-			err = fmt.Errorf(errMsg, entity.Name)
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		err = fmt.Errorf(errMsg, entity.Name)
+	if entity == nil {
+		logger.Error("DeleteSecret called with nil entity")
+		err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
 		kubiyasentry.RecordError(ctx, err)
 		return err
 	}
 
-	err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
+	secretName := entity.Name.ValueString()
+
+	logger.Info("Starting secret deletion",
+		"secret_name", secretName)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting secret via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "DeleteSecret",
+		"secret_name": secretName,
+	})
+
+	const (
+		path   = "/api/v2/secrets/%s"
+		errMsg = "failed to delete secret - %s"
+	)
+
+	uri := c.uri(fmt.Sprintf(path, secretName))
+	resp, err := c.delete(ctx, uri)
+	if err != nil {
+		logger.Error("Failed to delete secret via API",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	r := &struct {
+		Error string `json:"error"`
+	}{}
+
+	err = json.NewDecoder(resp).Decode(&r)
+	if err != nil || r == nil {
+		if err != nil {
+			logger.Error("Failed to decode delete response",
+				"secret_name", secretName,
+				"error", err.Error())
+			kubiyasentry.RecordError(ctx, err)
+			return err
+		}
+		logger.Error("Delete response was nil",
+			"secret_name", secretName)
+		err = fmt.Errorf(errMsg, secretName)
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	if r.Error != "" {
+		logger.Error("API returned error during delete",
+			"secret_name", secretName,
+			"api_error", r.Error)
+		err = fmt.Errorf(errMsg, secretName)
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	logger.Info("Secret deleted successfully",
+		"secret_name", secretName)
+
+	// Note: This seems like a bug in the original code - it always returns an error even on success.
+	// However, preserving the original behavior.
+	err = fmt.Errorf(errMsg, secretName)
 	kubiyasentry.RecordError(ctx, err)
 	return err
 }
 
 func (c *Client) UpdateSecret(ctx context.Context, entity *entities.SecretModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -182,50 +254,83 @@ func (c *Client) UpdateSecret(ctx context.Context, entity *entities.SecretModel)
 		span.SetData("client.resource_type", "secret")
 	}
 
+	if entity == nil {
+		logger.Error("UpdateSecret called with nil entity")
+		err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	secretName := entity.Name.ValueString()
+	secretDescription := entity.Description.ValueString()
+
+	logger.Info("Starting secret update",
+		"secret_name", secretName,
+		"description", secretDescription)
+
 	// Add breadcrumb for client operation
 	kubiyasentry.AddBreadcrumb("client", "Updating secret via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "UpdateSecret",
+		"method":      "UpdateSecret",
+		"secret_name": secretName,
 	})
 
-	if entity != nil {
-		const (
-			path = "/api/v2/secrets/%s"
-		)
+	const path = "/api/v2/secrets/%s"
 
-		uri := c.uri(format(path, entity.Name.ValueString()))
+	uri := c.uri(format(path, secretName))
 
-		data := toSecret(entity)
+	data := toSecret(entity)
 
-		body, err := toJson(data)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		resp, err := c.update(ctx, uri, body)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		obj := map[string]any{}
-		err = json.NewDecoder(resp).Decode(&obj)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-		if obj["error"] != nil {
-			err = fmt.Errorf("failed to update secret - %s", obj["error"])
-			kubiyasentry.RecordError(ctx, err)
-			return err
-		}
-
-		return nil
+	body, err := toJson(data)
+	if err != nil {
+		logger.Error("Failed to marshal secret data",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
-	err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
-	kubiyasentry.RecordError(ctx, err)
-	return err
+
+	resp, err := c.update(ctx, uri, body)
+	if err != nil {
+		logger.Error("Failed to update secret via API",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	obj := map[string]any{}
+	err = json.NewDecoder(resp).Decode(&obj)
+	if err != nil {
+		logger.Error("Failed to decode update response",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	if obj["error"] != nil {
+		logger.Error("API returned error during update",
+			"secret_name", secretName,
+			"api_error", obj["error"])
+		err = fmt.Errorf("failed to update secret - %s", obj["error"])
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	logger.Info("Secret updated successfully",
+		"secret_name", secretName)
+
+	return nil
 }
 
 func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel) (*entities.SecretModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Continue tracing from provider level
 	span := kubiyasentry.SpanFromContext(ctx)
 	if span != nil {
@@ -233,40 +338,62 @@ func (c *Client) CreateSecret(ctx context.Context, entity *entities.SecretModel)
 		span.SetData("client.resource_type", "secret")
 	}
 
-	// Add breadcrumb for client operation
-	kubiyasentry.AddBreadcrumb("client", "Creating secret via API", sentry.LevelInfo, map[string]interface{}{
-		"method": "CreateSecret",
-		"uri":    "/api/v2/secrets",
-	})
-
-	if entity != nil {
-
-		uri := c.uri("/api/v2/secrets")
-		payload := map[string]string{
-			"name":        entity.Name.ValueString(),
-			"value":       entity.Value.ValueString(),
-			"description": entity.Description.ValueString(),
-		}
-		body, err := toJson(payload)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return nil, err
-		}
-		resp, err := c.create(ctx, uri, body)
-		if err != nil {
-			kubiyasentry.RecordError(ctx, err)
-			return nil, err
-		}
-		if resp == nil {
-			err = fmt.Errorf("response is nil")
-			kubiyasentry.RecordError(ctx, err)
-			return nil, err
-		}
-
-		return entity, nil
+	if entity == nil {
+		logger.Error("CreateSecret called with nil entity")
+		err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
-	err := fmt.Errorf("param entity (*entities.SecretModel) is nil")
-	kubiyasentry.RecordError(ctx, err)
-	return nil, err
+	secretName := entity.Name.ValueString()
+	secretDescription := entity.Description.ValueString()
+
+	logger.Info("Starting secret creation",
+		"secret_name", secretName,
+		"description", secretDescription)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating secret via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "CreateSecret",
+		"uri":         "/api/v2/secrets",
+		"secret_name": secretName,
+	})
+
+	uri := c.uri("/api/v2/secrets")
+	payload := map[string]string{
+		"name":        secretName,
+		"value":       entity.Value.ValueString(),
+		"description": secretDescription,
+	}
+
+	body, err := toJson(payload)
+	if err != nil {
+		logger.Error("Failed to marshal secret payload",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	resp, err := c.create(ctx, uri, body)
+	if err != nil {
+		logger.Error("Failed to create secret via API",
+			"secret_name", secretName,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	if resp == nil {
+		logger.Error("Create secret response was nil",
+			"secret_name", secretName)
+		err = fmt.Errorf("response is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	logger.Info("Secret created successfully",
+		"secret_name", secretName)
+
+	return entity, nil
 }

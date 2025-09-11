@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 func (c *Client) uri(path string) string {
@@ -78,15 +80,40 @@ func (c *Client) auth(req *http.Request) *http.Request {
 
 func (c *Client) do(req *http.Request) (*http.Response, error) {
 	if req != nil {
+		// Get logger from context
+		logger := kubiyasentry.LoggerFromContext(req.Context())
+
+		// Log request details
+		logger.Debug("Executing HTTP request",
+			"method", req.Method,
+			"url", req.URL.String(),
+		)
+
 		req = c.auth(req)
 		resp, err := c.client.Do(req)
 		if err != nil || resp == nil {
 			if err != nil {
+				logger.Error("HTTP request failed",
+					"method", req.Method,
+					"url", req.URL.String(),
+					"error", err,
+				)
 				return nil, err
 			}
 
+			logger.Error("HTTP response is nil",
+				"method", req.Method,
+				"url", req.URL.String(),
+			)
 			return nil, eformat("failed to make http request. *http.Response is nil")
 		}
+
+		// Log response status
+		logger.Debug("HTTP response received",
+			"method", req.Method,
+			"url", req.URL.String(),
+			"status", resp.StatusCode,
+		)
 
 		if resp.StatusCode >= http.StatusBadRequest {
 			defer closeBody(resp.Body)
@@ -99,6 +126,14 @@ func (c *Client) do(req *http.Request) (*http.Response, error) {
 			response := string(b)
 			statusCode := resp.StatusCode
 			requestUrl := req.URL.String()
+
+			// Log error response
+			logger.Error("HTTP request failed with error response",
+				"method", req.Method,
+				"url", requestUrl,
+				"status", statusCode,
+				"response", response,
+			)
 
 			err = errors.Join(err, eformat("request :%s has failed. status code: %d, response: %s",
 				requestUrl, statusCode, response))
@@ -122,9 +157,20 @@ func (c *Client) doWithBody(req *http.Request) ([]byte, error) {
 
 // createRequest is a helper function to create and configure HTTP requests
 func (c *Client) createRequest(ctx context.Context, method, url string, body io.Reader, headers map[string]string, qp ...string) (*http.Request, error) {
+	// Ensure logger is in context
+	if kubiyasentry.LoggerFromContext(ctx) == nil {
+		logger := kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	req, err := http.NewRequest(method, url, body)
 	if err != nil || req == nil {
 		if err != nil {
+			kubiyasentry.LoggerFromContext(ctx).Error("Failed to create HTTP request",
+				"method", method,
+				"url", url,
+				"error", err,
+			)
 			return nil, err
 		}
 		return nil, eformat("failed to create *http.Request")

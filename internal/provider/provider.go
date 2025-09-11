@@ -56,14 +56,21 @@ func (p *kubiyaProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 
 func (p *kubiyaProvider) Configure(ctx context.Context, _ provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 	// Initialize Sentry when provider is configured
-	if err := kubiyasentry.Initialize(p.version); err != nil {
+	if err := kubiyasentry.Initialize(); err != nil {
 		// Log error but don't fail provider configuration
 		// Sentry is optional for functionality
 	}
 
+	// Get logger and add to context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
 	// Start a transaction for provider configuration
 	ctx, span := kubiyasentry.StartTransaction(ctx, "provider.configure", "Configuring Kubiya provider")
 	defer kubiyasentry.FinishSpan(span)
+
+	// Log provider configuration start
+	logger.Info("Configuring Kubiya provider", "version", p.version)
 
 	// Add breadcrumb
 	kubiyasentry.AddBreadcrumb("provider", "Configuring Kubiya provider", sentry.LevelInfo, nil)
@@ -78,6 +85,7 @@ func (p *kubiyaProvider) Configure(ctx context.Context, _ provider.ConfigureRequ
 
 	apiKey := os.Getenv(apiKeyEnvVar)
 	if apiKey == "" {
+		logger.Error("API key not configured", "env_var", apiKeyEnvVar)
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		resp.Diagnostics.AddError(missingAPIKey, missingAPIKeyDetails)
 		return
@@ -87,6 +95,9 @@ func (p *kubiyaProvider) Configure(ctx context.Context, _ provider.ConfigureRequ
 	env := os.Getenv(envKeyEnvVar)
 	if env == "" {
 		env = "production"
+		logger.Debug("Using default environment", "environment", env)
+	} else {
+		logger.Info("Using configured environment", "environment", env)
 	}
 
 	// Set Sentry environment tag
@@ -95,9 +106,13 @@ func (p *kubiyaProvider) Configure(ctx context.Context, _ provider.ConfigureRequ
 		scope.SetTag("provider.version", p.version)
 	})
 
+	// Log client creation attempt
+	logger.Debug("Creating Kubiya client", "environment", env)
+
 	// Create a new Kubiya client using the API key and environment
 	client, err := clients.New(apiKey, env)
 	if err != nil {
+		logger.Error("Failed to create Kubiya client", "error", err, "environment", env)
 		kubiyasentry.RecordError(ctx, err)
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
 		resp.Diagnostics.AddError("Failed to Create Kubiya Client", "An error occurred while creating the Kubiya client: "+err.Error())
@@ -105,6 +120,7 @@ func (p *kubiyaProvider) Configure(ctx context.Context, _ provider.ConfigureRequ
 	}
 
 	// Success
+	logger.Info("Successfully configured Kubiya provider", "environment", env, "version", p.version)
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 
 	// Attach the client to be used by resources and data sources
