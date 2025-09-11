@@ -31,12 +31,16 @@ func NewWebhookResource() resource.Resource {
 }
 
 func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the read operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_webhook", "", kubiyasentry.OpResourceRead)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Reading webhook resource", sentry.LevelInfo, nil)
 
 	var state entities.WebhookModel
 	diags := req.State.Get(ctx, &state)
@@ -44,23 +48,31 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for webhook read", "error", "diagnostics error")
 		return
 	}
 
 	// Update span with resource ID if available
 	id := ""
+	name := ""
 	if !state.Id.IsNull() {
 		id = state.Id.ValueString()
 		kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, id)
 		kubiyasentry.SetSpanData(span, "webhook.id", id)
 	}
+	if !state.Name.IsNull() {
+		name = state.Name.ValueString()
+	}
+
+	// Log read operation
+	logger.Debug("Reading webhook resource", "webhook_id", id, "webhook_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Reading webhook resource", sentry.LevelDebug, map[string]interface{}{"webhook_id": id, "webhook_name": name})
 
 	// Read API call logic
 	if err := r.client.ReadWebhook(ctx, &state); err != nil {
-		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_webhook", id, "read", err)
-
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusNotFound)
+		logger.Error("Failed to read webhook", "webhook_id", id, "webhook_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			"webhook not found",
 			fmt.Sprintf("webhook by name: %s not found. Error: ", state.Name)+err.Error(),
@@ -68,18 +80,22 @@ func (r *webhookResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Debug("Successfully read webhook", "webhook_id", id, "webhook_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the update operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_webhook", "", kubiyasentry.OpResourceUpdate)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Updating webhook resource", sentry.LevelInfo, nil)
 
 	var plan entities.WebhookModel
 	var state entities.WebhookModel
@@ -92,12 +108,18 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get plan or state for webhook update", "error", "diagnostics error")
 		return
 	}
 
 	id := state.Id.ValueString()
+	name := state.Name.ValueString()
 	kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, id)
 	kubiyasentry.SetSpanData(span, "webhook.id", id)
+
+	// Log update operation
+	logger.Info("Updating webhook resource", "webhook_id", id, "webhook_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Updating webhook resource", sentry.LevelInfo, map[string]interface{}{"webhook_id": id, "webhook_name": name})
 
 	updatedState := state
 
@@ -127,10 +149,9 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 	}
 
 	if err := r.client.UpdateWebhook(ctx, &updatedState); err != nil {
-		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_webhook", id, "update", err)
-
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		logger.Error("Failed to update webhook", "webhook_id", id, "webhook_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			"failed to update webhook",
 			"failed to update webhook. Error: "+err.Error(),
@@ -138,8 +159,8 @@ func (r *webhookResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully updated webhook", "webhook_id", id, "webhook_name", name)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
@@ -148,25 +169,36 @@ func (r *webhookResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 }
 
 func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the create operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_webhook", "", kubiyasentry.OpResourceCreate)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Creating webhook resource", sentry.LevelInfo, nil)
 
 	var plan entities.WebhookModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get plan for webhook create", "error", "diagnostics error")
 		return
 	}
 
 	// Add plan data to span
+	name := ""
 	if !plan.Name.IsNull() {
-		kubiyasentry.SetSpanData(span, "webhook.name", plan.Name.ValueString())
+		name = plan.Name.ValueString()
+		kubiyasentry.SetSpanData(span, "webhook.name", name)
 	}
+
+	// Log create operation
+	logger.Info("Creating webhook resource", "webhook_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Creating webhook resource", sentry.LevelInfo, map[string]interface{}{"webhook_name": name})
 
 	// Normalize workflow JSON before sending to backend
 	workflow := plan.Workflow.ValueString()
@@ -174,8 +206,8 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		var jsonRaw json.RawMessage
 		if err := json.Unmarshal([]byte(workflow), &jsonRaw); err != nil {
 			kubiyasentry.RecordError(ctx, err)
-			CaptureResourceError(ctx, "kubiya_webhook", "", "create", err)
-
+			kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+			logger.Error("Invalid JSON in workflow", "webhook_name", name, "error", err)
 			resp.Diagnostics.AddError(
 				"Invalid JSON in Workflow",
 				"Failed to parse workflow JSON: "+err.Error(),
@@ -185,8 +217,8 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		normalized, err := json.Marshal(jsonRaw)
 		if err != nil {
 			kubiyasentry.RecordError(ctx, err)
-			CaptureResourceError(ctx, "kubiya_webhook", "", "create", err)
-
+			kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+			logger.Error("Failed to normalize workflow JSON", "webhook_name", name, "error", err)
 			resp.Diagnostics.AddError(
 				"JSON Normalization Failed",
 				"Failed to normalize workflow JSON: "+err.Error(),
@@ -204,10 +236,9 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 	// Call backend API to create webhook
 	state, err := r.client.CreateWebhook(ctx, &plan)
 	if err != nil {
-		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_webhook", "", "create", err)
-
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		logger.Error("Failed to create webhook", "webhook_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			"Failed to Create Webhook",
 			"Failed to create webhook. Error: "+err.Error(),
@@ -230,12 +261,14 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 			if err == nil {
 				state.Workflow = types.StringValue(string(normalized))
 			} else {
+				logger.Warn("Failed to normalize workflow JSON from backend", "error", err)
 				resp.Diagnostics.AddWarning(
 					"JSON Normalization Warning",
 					"Failed to normalize workflow JSON from backend: "+err.Error(),
 				)
 			}
 		} else {
+			logger.Warn("Backend returned invalid workflow JSON", "error", err)
 			resp.Diagnostics.AddWarning(
 				"Invalid JSON in Backend Response",
 				"Backend returned invalid workflow JSON: "+err.Error(),
@@ -248,19 +281,23 @@ func (r *webhookResource) Create(ctx context.Context, req resource.CreateRequest
 		state.Agent = types.StringNull()
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully created webhook", "webhook_name", name, "webhook_id", state.Id.ValueString())
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
 }
 
 func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	// Start tracing for the delete operation
 	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_webhook", "", kubiyasentry.OpResourceDelete)
 	defer kubiyasentry.FinishSpan(span)
-
-	// Add breadcrumb
-	kubiyasentry.AddBreadcrumb("resource", "Deleting webhook resource", sentry.LevelInfo, nil)
 
 	var state entities.WebhookModel
 	diags := req.State.Get(ctx, &state)
@@ -268,20 +305,25 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 
 	if resp.Diagnostics.HasError() {
 		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
+		logger.Error("Failed to get state for webhook delete", "error", "diagnostics error")
 		return
 	}
 
 	// Update span with resource ID
 	id := state.Id.ValueString()
+	name := state.Name.ValueString()
 	kubiyasentry.SetSpanTag(span, kubiyasentry.TagResourceID, id)
 	kubiyasentry.SetSpanData(span, "webhook.id", id)
 
+	// Log delete operation
+	logger.Info("Deleting webhook resource", "webhook_id", id, "webhook_name", name)
+	kubiyasentry.AddBreadcrumb("resource", "Deleting webhook resource", sentry.LevelInfo, map[string]interface{}{"webhook_id": id, "webhook_name": name})
+
 	// Delete API call logic
 	if err := r.client.DeleteWebhook(ctx, &state); err != nil {
-		// Record error in span and capture to Sentry
 		kubiyasentry.RecordError(ctx, err)
-		CaptureResourceError(ctx, "kubiya_webhook", id, "delete", err)
-
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
+		logger.Error("Failed to delete webhook", "webhook_id", id, "webhook_name", name, "error", err)
 		resp.Diagnostics.AddError(
 			"failed to delete webhook",
 			"failed to delete webhook. Error: "+err.Error(),
@@ -289,8 +331,8 @@ func (r *webhookResource) Delete(ctx context.Context, req resource.DeleteRequest
 		return
 	}
 
-	// Success
 	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
+	logger.Info("Successfully deleted webhook", "webhook_id", id, "webhook_name", name)
 	kubiyasentry.AddBreadcrumb("resource", "Successfully deleted webhook "+id, sentry.LevelInfo, nil)
 }
 
@@ -298,17 +340,26 @@ func (r *webhookResource) Metadata(_ context.Context, req resource.MetadataReque
 	resp.TypeName = req.ProviderTypeName + "_webhook"
 }
 
-func (r *webhookResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *webhookResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+	// Get or create logger in context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	if req.ProviderData != nil {
 		var ok bool
 		var client *clients.Client
 
 		if client, ok = req.ProviderData.(*clients.Client); !ok {
+			logger.Error("Failed to configure webhook resource", "error", "invalid provider data type")
 			resp.Diagnostics.AddError(configResourceError(req.ProviderData))
 			return
 		}
 
 		r.name = "webhook"
 		r.client = client
+		logger.Debug("Successfully configured webhook resource")
 	}
 }

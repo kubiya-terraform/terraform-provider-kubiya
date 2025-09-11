@@ -3,7 +3,6 @@ package sentry
 import (
 	"context"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 
@@ -23,9 +22,9 @@ type Config struct {
 	Release          string
 }
 
-// Initialize initializes the Sentry SDK with hardcoded configuration
-func Initialize(providerVersion string) error {
-	config := getConfig(providerVersion)
+// Initialize initializes the Sentry SDK with enhanced configuration
+func Initialize() error {
+	config := getConfig()
 
 	// Skip initialization if DSN is empty
 	if config.DSN == "" {
@@ -33,9 +32,16 @@ func Initialize(providerVersion string) error {
 		return nil
 	}
 
-	err := sentry.Init(sentry.ClientOptions{
+	// Initialize logging first
+	InitializeLogging()
+	logger := GetLogger()
+
+	// Use HTTPSyncTransport for synchronous sending
+	transport := sentry.NewHTTPSyncTransport()
+	logger.Info("Using HTTPSyncTransport")
+
+	clientOptions := sentry.ClientOptions{
 		Dsn:              config.DSN,
-		Environment:      config.Environment,
 		SampleRate:       config.SampleRate,
 		TracesSampleRate: config.TracesSampleRate,
 		EnableTracing:    config.EnableTracing,
@@ -43,6 +49,7 @@ func Initialize(providerVersion string) error {
 		Debug:            config.Debug,
 		ServerName:       config.ServerName,
 		Release:          config.Release,
+		Transport:        transport, // Always set the transport
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			// Sanitize sensitive data before sending
 			return sanitizeEvent(event)
@@ -67,15 +74,16 @@ func Initialize(providerVersion string) error {
 			}
 			return filtered
 		},
-	})
+	}
 
+	err := sentry.Init(clientOptions)
 	if err != nil {
 		return fmt.Errorf("failed to initialize Sentry: %w", err)
 	}
 
 	// Set initial scope data
 	sentry.ConfigureScope(func(scope *sentry.Scope) {
-		scope.SetTag(TagProviderVersion, providerVersion)
+		scope.SetTag(TagProviderVersion, Version)
 		scope.SetContext("runtime", map[string]interface{}{
 			"go_version": runtime.Version(),
 			"os":         runtime.GOOS,
@@ -87,8 +95,7 @@ func Initialize(providerVersion string) error {
 }
 
 // getConfig returns the Sentry configuration based on environment
-func getConfig(providerVersion string) *Config {
-	environment := getEnvironment()
+func getConfig() *Config {
 
 	// Use build-time DSN if available, otherwise use default (empty = disabled)
 	dsn := DSN
@@ -98,52 +105,15 @@ func getConfig(providerVersion string) *Config {
 
 	config := &Config{
 		DSN:              dsn,
-		Environment:      environment,
-		EnableTracing:    EnableTracing,
-		AttachStacktrace: AttachStacktrace,
-		Debug:            Debug,
-		ServerName:       getServerName(),
-		Release:          fmt.Sprintf("terraform-provider-kubiya@%s", providerVersion),
-	}
-
-	// Set sample rates based on environment
-	switch environment {
-	case EnvironmentStaging:
-		config.SampleRate = StagingErrorSampleRate
-		config.TracesSampleRate = StagingTracesSampleRate
-	case EnvironmentProduction:
-		fallthrough
-	default:
-		config.SampleRate = ProductionErrorSampleRate
-		config.TracesSampleRate = ProductionTracesSampleRate
+		EnableTracing:    true,
+		AttachStacktrace: true,
+		Debug:            false,
+		SampleRate:       1.0,
+		TracesSampleRate: 0.1,
+		Release:          fmt.Sprintf("terraform-provider-kubiya@%s", Version),
 	}
 
 	return config
-}
-
-// getEnvironment reads KUBIYA_ENV and returns the environment
-func getEnvironment() string {
-	env := os.Getenv("KUBIYA_ENV")
-
-	// Validate and normalize the environment value
-	switch strings.ToLower(strings.TrimSpace(env)) {
-	case "staging":
-		return EnvironmentStaging
-	case "production":
-		return EnvironmentProduction
-	default:
-		// Default to production for any invalid or empty value
-		return DefaultEnvironment
-	}
-}
-
-// getServerName returns a server identifier
-func getServerName() string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "unknown"
-	}
-	return hostname
 }
 
 // Flush flushes any buffered events to Sentry
