@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type source struct {
@@ -64,32 +66,64 @@ func newSources(body io.Reader) ([]*source, error) {
 }
 
 func (c *Client) DeleteSource(ctx context.Context, e *entities.SourceModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteSource")
+		span.SetData("client.resource_type", "source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "DeleteSource",
+	})
+
 	if e != nil {
 		id := e.Id.ValueString()
 		path := format("/api/v1/sources/%s", id)
 
 		_, err := c.delete(ctx, c.uri(path))
+		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
+		}
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.SourceModel) is nil")
+	err := fmt.Errorf("param entity (*entities.SourceModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadSource")
+		span.SetData("client.resource_type", "source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "ReadSource",
+	})
+
 	path := format("/api/v1/sources/%s", id)
 
 	resp, err := c.read(ctx, c.uri(path))
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	result, err := newSource(resp)
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	entity, err := fromSource(result, types.StringValue("{}"))
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
@@ -101,6 +135,19 @@ func (c *Client) ReadSource(ctx context.Context, id string) (*entities.SourceMod
 }
 
 func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*entities.SourceModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateSource")
+		span.SetData("client.resource_type", "source")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating source via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateSource",
+		"uri":    "/api/v1/sources",
+	})
+
 	if e != nil {
 		uri := c.uri("/api/v1/sources")
 
@@ -114,12 +161,14 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 
 		if e.DynamicConfig.ValueString() != "" {
 			if err := json.Unmarshal([]byte(e.DynamicConfig.ValueString()), &data.DynamicConfig); err != nil {
+				kubiyasentry.RecordError(ctx, err)
 				return nil, err
 			}
 		}
 
 		body, err := toJson(data)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -127,16 +176,19 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 
 		resp, err := c.create(ctx, uri, body, qps...)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		result, err := newSource(resp)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		returnSource, err := fromSource(result, e.DynamicConfig)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -147,5 +199,7 @@ func (c *Client) CreateSource(ctx context.Context, e *entities.SourceModel) (*en
 		return returnSource, nil
 	}
 
-	return nil, fmt.Errorf("param entity (*entities.SourceModel) is nil")
+	err := fmt.Errorf("param entity (*entities.SourceModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return nil, err
 }

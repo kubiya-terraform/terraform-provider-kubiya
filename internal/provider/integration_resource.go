@@ -3,11 +3,13 @@ package provider
 import (
 	"context"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 var (
@@ -68,23 +70,37 @@ func (r *integrationResource) Delete(ctx context.Context, req resource.DeleteReq
 }
 
 func (r *integrationResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Start tracing for the create operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_integration", "", kubiyasentry.OpResourceCreate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Creating integration resource", sentry.LevelInfo, nil)
+
 	var plan entities.IntegrationModel
 
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
 	state, err := r.client.CreateIntegration(ctx, &plan)
 	if err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_integration", "", "create", err)
+
 		resp.Diagnostics.AddError(
 			resourceActionError(createAction, r.name, err.Error()),
 		)
 		return
 	}
 
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 

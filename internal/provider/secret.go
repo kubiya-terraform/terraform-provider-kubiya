@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 var (
@@ -24,16 +26,28 @@ func NewSecreResource() resource.Resource {
 }
 
 func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Start tracing for the read operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_secret", "", kubiyasentry.OpResourceRead)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Reading secret resource", sentry.LevelInfo, nil)
+
 	var state entities.SecretModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
 	// Read API call logic
 	if err := r.client.ReadSecret(ctx, &state); err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_secret", "", "read", err)
+
 		resp.State.RemoveResource(ctx)
 		// resp.Diagnostics.AddError(
 		// 	"secret not found",
@@ -42,10 +56,19 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 }
 
 func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Start tracing for the update operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_secret", "", kubiyasentry.OpResourceUpdate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Updating secret resource", sentry.LevelInfo, nil)
+
 	var plan entities.SecretModel
 	var state entities.SecretModel
 	diags := req.Plan.Get(ctx, &plan)
@@ -55,6 +78,7 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
@@ -71,6 +95,10 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	if err := r.client.UpdateSecret(ctx, &updatedState); err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_secret", "", "update", err)
+
 		resp.Diagnostics.AddError(
 			"failed to update secret. Error: "+err.Error(),
 			"failed to update secret",
@@ -78,9 +106,12 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInternalError)
 		return
 	}
 
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &updatedState)...)
 }
 
@@ -89,16 +120,28 @@ func (r *secretResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 }
 
 func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Start tracing for the create operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_secret", "", kubiyasentry.OpResourceCreate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Creating secret resource", sentry.LevelInfo, nil)
+
 	var plan entities.SecretModel
 	diags := req.Config.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
 	state, err := r.client.CreateSecret(ctx, &plan)
 	if err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_secret", "", "create", err)
+
 		resp.Diagnostics.AddError(
 			"failed to create secret",
 			"failed to create secret. Error: "+err.Error(),
@@ -106,25 +149,38 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.Diagnostics.Append(resp.State.Set(ctx, state)...)
 }
 
 func (r *secretResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	// Start tracing for the delete operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_secret", "", kubiyasentry.OpResourceDelete)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Deleting secret resource", sentry.LevelInfo, nil)
+
 	var state entities.SecretModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
 	// Delete API call logic
-	r.client.DeleteSecret(ctx, &state)
-	// 	resp.Diagnostics.AddError(
-	// 		"failed to delete secret",
-	// 		"failed to delete secret. Error: "+err.Error(),
-	// 	)
-	// }
+	if err := r.client.DeleteSecret(ctx, &state); err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_secret", "", "delete", err)
+		// Don't add error to diagnostics as the original code doesn't
+	}
+
+	// Success
+	kubiyasentry.SetSpanStatus(span, sentry.SpanStatusOK)
 	resp.State.RemoveResource(ctx)
 }
 

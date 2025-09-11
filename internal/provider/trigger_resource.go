@@ -8,8 +8,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
+	"github.com/getsentry/sentry-go"
+
 	"terraform-provider-kubiya/internal/clients"
 	"terraform-provider-kubiya/internal/entities"
+
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -59,11 +63,19 @@ func (r *triggerResource) Configure(_ context.Context, req resource.ConfigureReq
 
 // Create creates the resource and sets the initial Terraform state.
 func (r *triggerResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	// Start tracing for the create operation
+	ctx, span := kubiyasentry.TraceResourceOperation(ctx, "kubiya_trigger", "", kubiyasentry.OpResourceCreate)
+	defer kubiyasentry.FinishSpan(span)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("resource", "Creating trigger resource", sentry.LevelInfo, nil)
+
 	// Retrieve values from plan
 	var plan entities.TriggerModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
+		kubiyasentry.SetSpanStatus(span, sentry.SpanStatusInvalidArgument)
 		return
 	}
 
@@ -74,6 +86,10 @@ func (r *triggerResource) Create(ctx context.Context, req resource.CreateRequest
 
 	createdTrigger, err := r.client.CreateTrigger(ctx, &plan)
 	if err != nil {
+		// Record error in span and capture to Sentry
+		kubiyasentry.RecordError(ctx, err)
+		CaptureResourceError(ctx, "kubiya_trigger", "", "create", err)
+
 		resp.Diagnostics.AddError(
 			"Error creating trigger",
 			"Could not create trigger, unexpected error: "+err.Error(),

@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type (
@@ -127,21 +129,51 @@ func toIntegrationModel(e *integrationApi) (*entities.IntegrationModel, error) {
 }
 
 func (c *Client) DeleteIntegration(ctx context.Context, e *entities.IntegrationModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteIntegration")
+		span.SetData("client.resource_type", "integration")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting integration via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "DeleteIntegration",
+	})
+
 	if e != nil {
 		name := e.Name.ValueString()
 		path := format("/api/v2/integrations/%s", name)
 
 		_, err := c.delete(ctx, c.uri(path))
+		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
+		}
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	err := fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "UpdateIntegration")
+		span.SetData("client.resource_type", "integration")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Updating integration via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "UpdateIntegration",
+	})
+
 	if e != nil {
 		data, err := toIntegrationApi(e)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
@@ -149,6 +181,7 @@ func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationM
 
 		body, err := toJson(data)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
@@ -157,49 +190,87 @@ func (c *Client) UpdateIntegration(ctx context.Context, e *entities.IntegrationM
 
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		var r integrationApi
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		e, err = toIntegrationModel(&r)
-
+		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
+		}
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	err := fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) ReadIntegration(ctx context.Context, name string) (*entities.IntegrationModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadIntegration")
+		span.SetData("client.resource_type", "integration")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading integration via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "ReadIntegration",
+		"name":   name,
+	})
+
 	resp, err := c.read(ctx, c.uri(format("/api/v2/integrations/%s", name)))
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	r, err := newIntegration(resp)
 	if err != nil {
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	entity, err := toIntegrationModel(r)
 	if err != nil || entity == nil {
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
-		return nil, eformat("Integration %s not found", name)
+		err = eformat("Integration %s not found", name)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	return entity, nil
 }
 
 func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationModel) (*entities.IntegrationModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateIntegration")
+		span.SetData("client.resource_type", "integration")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating integration via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateIntegration",
+		"uri":    "/api/v2/integrations",
+	})
+
 	if e != nil {
 		data, err := toIntegrationApi(e)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -207,6 +278,7 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 
 		body, err := toJson(data)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -214,22 +286,27 @@ func (c *Client) CreateIntegration(ctx context.Context, e *entities.IntegrationM
 
 		resp, err := c.create(ctx, uri, body)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		var r integrationApi
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		entity, err := toIntegrationModel(&r)
 		if err != nil {
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		return entity, err
 	}
 
-	return nil, fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	err := fmt.Errorf("param entity (*entities.IntegrationModel) is nil")
+	kubiyasentry.RecordError(ctx, err)
+	return nil, err
 }

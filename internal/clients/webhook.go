@@ -7,9 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type (
@@ -308,6 +310,19 @@ func (c *Client) UpdateWebhook(ctx context.Context, entity *entities.WebhookMode
 }
 
 func (c *Client) CreateWebhook(ctx context.Context, entity *entities.WebhookModel) (*entities.WebhookModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateWebhook")
+		span.SetData("client.resource_type", "webhook")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating webhook via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateWebhook",
+		"uri":    "/api/v1/event",
+	})
+
 	if entity != nil {
 		wf := entity.Workflow.ValueString()
 		agentId := entity.Agent.ValueString()

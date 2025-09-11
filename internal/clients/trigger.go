@@ -7,9 +7,11 @@ import (
 	"io"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 // WorkflowDefinition represents the workflow structure for API requests
@@ -157,14 +159,30 @@ func workflowDefinitionToJSON(def *WorkflowDefinition) (string, error) {
 
 // CreateTrigger creates a new trigger (workflow with webhook)
 func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerModel) (*entities.TriggerModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateTrigger")
+		span.SetData("client.resource_type", "trigger")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating trigger via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateTrigger",
+	})
+
 	if entity == nil {
-		return nil, fmt.Errorf("trigger entity is nil")
+		err := fmt.Errorf("trigger entity is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Parse workflow JSON to definition
 	workflowDef, err := parseWorkflowJSON(entity.Workflow.ValueString())
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse workflow: %w", err)
+		err = fmt.Errorf("failed to parse workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Step 1: Create the workflow in draft status
@@ -177,7 +195,9 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 	workflowBody, err := json.Marshal(workflowReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal workflow request: %w", err)
+		err = fmt.Errorf("failed to marshal workflow request: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Call the workflow creation API
@@ -186,12 +206,16 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 	workflowURL := c.uriWithHost(host, createPath)
 	resp, err := c.create(ctx, workflowURL, io.NopCloser(strings.NewReader(string(workflowBody))))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create workflow: %w", err)
+		err = fmt.Errorf("failed to create workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	var workflowResp WorkflowResponse
 	if err := json.NewDecoder(resp).Decode(&workflowResp); err != nil {
-		return nil, fmt.Errorf("failed to decode workflow response: %w", err)
+		err = fmt.Errorf("failed to decode workflow response: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Step 2: Publish the workflow with webhook trigger
@@ -203,7 +227,9 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 	publishBody, err := json.Marshal(publishReq)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal publish request: %w", err)
+		err = fmt.Errorf("failed to marshal publish request: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	publishPath := format("/api/workflows/%s/publish", workflowResp.Id)
@@ -212,7 +238,9 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 	if err != nil {
 		// Try to clean up the created workflow
 		_ = c.deleteWorkflow(ctx, workflowResp.Id)
-		return nil, fmt.Errorf("failed to publish workflow: %w", err)
+		err = fmt.Errorf("failed to publish workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Step 3: Generate webhook URL
@@ -225,7 +253,9 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 	if err != nil {
 		// Try to clean up
 		_ = c.deleteWorkflow(ctx, workflowResp.Id)
-		return nil, fmt.Errorf("failed to marshal webhook URL request: %w", err)
+		err = fmt.Errorf("failed to marshal webhook URL request: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	createTriggerPath := format("/api/workflows/%s/webhook-url", workflowResp.Id)
@@ -234,14 +264,18 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 	if err != nil {
 		// Try to clean up
 		_ = c.deleteWorkflow(ctx, workflowResp.Id)
-		return nil, fmt.Errorf("failed to generate webhook URL: %w", err)
+		err = fmt.Errorf("failed to generate webhook URL: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	var webhookResp WebhookURLResponse
 	if err := json.NewDecoder(resp).Decode(&webhookResp); err != nil {
 		// Try to clean up
 		_ = c.deleteWorkflow(ctx, workflowResp.Id)
-		return nil, fmt.Errorf("failed to decode webhook URL response: %w", err)
+		err = fmt.Errorf("failed to decode webhook URL response: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
 
 	// Set the computed fields
@@ -263,8 +297,22 @@ func (c *Client) CreateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 // ReadTrigger reads an existing trigger
 func (c *Client) ReadTrigger(ctx context.Context, entity *entities.TriggerModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadTrigger")
+		span.SetData("client.resource_type", "trigger")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading trigger via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "ReadTrigger",
+	})
+
 	if entity == nil {
-		return fmt.Errorf("trigger entity is nil")
+		err := fmt.Errorf("trigger entity is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	workflowId := entity.WorkflowId.ValueString()
@@ -279,12 +327,16 @@ func (c *Client) ReadTrigger(ctx context.Context, entity *entities.TriggerModel)
 
 	resp, err := c.read(ctx, workflowURL)
 	if err != nil {
-		return fmt.Errorf("failed to read workflow: %w", err)
+		err = fmt.Errorf("failed to read workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	var workflowResp WorkflowResponse
 	if err := json.NewDecoder(resp).Decode(&workflowResp); err != nil {
-		return fmt.Errorf("failed to decode workflow response: %w", err)
+		err = fmt.Errorf("failed to decode workflow response: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	// Update entity with current state
@@ -306,8 +358,22 @@ func (c *Client) ReadTrigger(ctx context.Context, entity *entities.TriggerModel)
 
 // UpdateTrigger updates an existing trigger
 func (c *Client) UpdateTrigger(ctx context.Context, entity *entities.TriggerModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "UpdateTrigger")
+		span.SetData("client.resource_type", "trigger")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Updating trigger via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "UpdateTrigger",
+	})
+
 	if entity == nil {
-		return fmt.Errorf("trigger entity is nil")
+		err := fmt.Errorf("trigger entity is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	workflowId := entity.WorkflowId.ValueString()
@@ -318,7 +384,9 @@ func (c *Client) UpdateTrigger(ctx context.Context, entity *entities.TriggerMode
 	// Parse workflow JSON to definition
 	workflowDef, err := parseWorkflowJSON(entity.Workflow.ValueString())
 	if err != nil {
-		return fmt.Errorf("failed to parse workflow: %w", err)
+		err = fmt.Errorf("failed to parse workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	// Update the workflow
@@ -331,7 +399,9 @@ func (c *Client) UpdateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 	workflowBody, err := json.Marshal(workflowReq)
 	if err != nil {
-		return fmt.Errorf("failed to marshal workflow request: %w", err)
+		err = fmt.Errorf("failed to marshal workflow request: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	host := "https://composer.kubiya.ai"
@@ -340,12 +410,16 @@ func (c *Client) UpdateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 	resp, err := c.update(ctx, workflowURL, io.NopCloser(strings.NewReader(string(workflowBody))))
 	if err != nil {
-		return fmt.Errorf("failed to update workflow: %w", err)
+		err = fmt.Errorf("failed to update workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	var workflowResp WorkflowResponse
 	if err := json.NewDecoder(resp).Decode(&workflowResp); err != nil {
-		return fmt.Errorf("failed to decode workflow response: %w", err)
+		err = fmt.Errorf("failed to decode workflow response: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	// If runner changed, we might need to regenerate the webhook URL
@@ -358,8 +432,22 @@ func (c *Client) UpdateTrigger(ctx context.Context, entity *entities.TriggerMode
 
 // DeleteTrigger deletes an existing trigger
 func (c *Client) DeleteTrigger(ctx context.Context, entity *entities.TriggerModel) error {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteTrigger")
+		span.SetData("client.resource_type", "trigger")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting trigger via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "DeleteTrigger",
+	})
+
 	if entity == nil {
-		return fmt.Errorf("trigger entity is nil")
+		err := fmt.Errorf("trigger entity is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	workflowId := entity.WorkflowId.ValueString()
@@ -377,7 +465,9 @@ func (c *Client) deleteWorkflow(ctx context.Context, workflowId string) error {
 	workflowURL := c.uriWithHost(host, deletePath)
 	resp, err := c.delete(ctx, workflowURL)
 	if err != nil {
-		return fmt.Errorf("failed to delete workflow: %w", err)
+		err = fmt.Errorf("failed to delete workflow: %w", err)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	// Check if deletion was successful
@@ -391,7 +481,9 @@ func (c *Client) deleteWorkflow(ctx context.Context, workflowId string) error {
 	}
 
 	if !result.Success {
-		return fmt.Errorf("failed to delete workflow: %s", result.Message)
+		err := fmt.Errorf("failed to delete workflow: %s", result.Message)
+		kubiyasentry.RecordError(ctx, err)
+		return err
 	}
 
 	return nil

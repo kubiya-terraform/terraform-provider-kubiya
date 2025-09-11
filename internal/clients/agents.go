@@ -8,9 +8,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type task struct {
@@ -419,6 +421,19 @@ func (c *Client) ReadAgent(ctx context.Context, id string) (*entities.AgentModel
 }
 
 func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateAgent")
+		span.SetData("client.resource_type", "agent")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating agent via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateAgent",
+		"uri":    "/api/v1/agents",
+	})
+
 	if e != nil {
 		cs, err := c.state()
 		if err != nil {
