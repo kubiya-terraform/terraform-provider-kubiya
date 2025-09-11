@@ -23,8 +23,8 @@ Environment configuration:
 
 If you're building releases, set up Sentry DSN in GitHub Secrets:
 
-- See [Quick Setup Guide](GITHUB_QUICK_SETUP.md) for 5-minute setup
-- Full instructions in [GitHub Secrets Setup](GITHUB_SECRETS_SETUP.md)
+- See [Quick Setup Guide](internal/sentry/GITHUB_QUICK_SETUP.md) for 5-minute setup
+- Full instructions in [GitHub Secrets Setup](internal/sentry/GITHUB_SECRETS_SETUP.md)
 
 For detailed information about the monitoring integration, see [SENTRY_INTEGRATION.md](docs/SENTRY_INTEGRATION.md).
 
