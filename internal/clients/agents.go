@@ -44,6 +44,7 @@ type agent struct {
 
 	Metadata  *metadata         `json:"metadata"`
 	Variables map[string]string `json:"environment_variables"`
+	MCPServer *mcpServer        `json:"mcp_server,omitempty"`
 
 	LlmModel       string `json:"llm_model,omitempty"`
 	Description    string `json:"description,omitempty"`
@@ -54,6 +55,15 @@ type agent struct {
 type starter struct {
 	Command string `json:"command"`
 	Name    string `json:"display_name"`
+}
+
+type mcpServer struct {
+	Type    string            `json:"type"`
+	Command string            `json:"command,omitempty"`
+	Args    []string          `json:"args,omitempty"`
+	Env     map[string]string `json:"env,omitempty"`
+	URL     string            `json:"url,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 type metadata struct {
@@ -231,6 +241,48 @@ func toAgent(a *entities.AgentModel, cs *state) (*agent, error) {
 		result.Variables[key] = strings.ReplaceAll(value.String(), "\"", "")
 	}
 
+	// Convert MCP server configuration
+	if a.MCPServer != nil && !a.MCPServer.Type.IsNull() && !a.MCPServer.Type.IsUnknown() {
+		result.MCPServer = &mcpServer{
+			Type: a.MCPServer.Type.ValueString(),
+		}
+
+		// Handle STDIO-specific fields
+		if !a.MCPServer.Command.IsNull() && !a.MCPServer.Command.IsUnknown() {
+			result.MCPServer.Command = a.MCPServer.Command.ValueString()
+		}
+
+		if !a.MCPServer.Args.IsNull() && !a.MCPServer.Args.IsUnknown() {
+			result.MCPServer.Args = make([]string, 0)
+			for _, v := range a.MCPServer.Args.Elements() {
+				if !v.IsNull() && !v.IsUnknown() {
+					str := v.String()
+					result.MCPServer.Args = append(result.MCPServer.Args,
+						strings.ReplaceAll(str, "\"", ""))
+				}
+			}
+		}
+
+		if !a.MCPServer.Env.IsNull() && !a.MCPServer.Env.IsUnknown() {
+			result.MCPServer.Env = make(map[string]string)
+			for key, value := range a.MCPServer.Env.Elements() {
+				result.MCPServer.Env[key] = strings.ReplaceAll(value.String(), "\"", "")
+			}
+		}
+
+		// Handle SSE-specific fields
+		if !a.MCPServer.URL.IsNull() && !a.MCPServer.URL.IsUnknown() {
+			result.MCPServer.URL = a.MCPServer.URL.ValueString()
+		}
+
+		if !a.MCPServer.Headers.IsNull() && !a.MCPServer.Headers.IsUnknown() {
+			result.MCPServer.Headers = make(map[string]string)
+			for key, value := range a.MCPServer.Headers.Elements() {
+				result.MCPServer.Headers[key] = strings.ReplaceAll(value.String(), "\"", "")
+			}
+		}
+	}
+
 	if valid := slices.Contains(cs.modelList, result.LlmModel); !valid {
 		model := result.LlmModel
 		models := strings.Join(cs.modelList, ",")
@@ -334,6 +386,45 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 	result.Sources = toListStringType(sourceList, err)
 
 	result.Integrations = toListStringType(a.Integrations, err)
+
+	// Convert MCP server configuration
+	if a.MCPServer != nil {
+		result.MCPServer = &entities.MCPServerModel{
+			Type: types.StringValue(a.MCPServer.Type),
+		}
+
+		// Handle STDIO-specific fields
+		if a.MCPServer.Command != "" {
+			result.MCPServer.Command = types.StringValue(a.MCPServer.Command)
+		} else {
+			result.MCPServer.Command = types.StringNull()
+		}
+
+		if len(a.MCPServer.Args) > 0 {
+			result.MCPServer.Args = toListStringType(a.MCPServer.Args, err)
+		} else {
+			result.MCPServer.Args = types.ListNull(types.StringType)
+		}
+
+		if len(a.MCPServer.Env) > 0 {
+			result.MCPServer.Env = toMapType(a.MCPServer.Env, err)
+		} else {
+			result.MCPServer.Env = types.MapNull(types.StringType)
+		}
+
+		// Handle SSE-specific fields
+		if a.MCPServer.URL != "" {
+			result.MCPServer.URL = types.StringValue(a.MCPServer.URL)
+		} else {
+			result.MCPServer.URL = types.StringNull()
+		}
+
+		if len(a.MCPServer.Headers) > 0 {
+			result.MCPServer.Headers = toMapType(a.MCPServer.Headers, err)
+		} else {
+			result.MCPServer.Headers = types.MapNull(types.StringType)
+		}
+	}
 
 	return result, err
 }
