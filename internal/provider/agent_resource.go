@@ -289,15 +289,6 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		updatedState.MCPServer = nil
 	}
 
-	// Validate the updated agent configuration including MCP server if present
-	if err := entities.ValidateAgent(&updatedState); err != nil {
-		resp.Diagnostics.AddError(
-			"Invalid Agent Configuration",
-			err.Error(),
-		)
-		return
-	}
-
 	id := updatedState.Id.ValueString()
 	name := updatedState.Name.ValueString()
 
@@ -307,6 +298,15 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		"agent_id":   id,
 		"agent_name": name,
 	})
+
+	// Validate the updated agent configuration including MCP server if present
+	if err := entities.ValidateAgent(&updatedState); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Agent Configuration",
+			err.Error(),
+		)
+		return
+	}
 
 	if err := r.client.UpdateAgent(ctx, &updatedState); err != nil {
 		kubiyasentry.RecordError(ctx, err)
