@@ -394,32 +394,36 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 		}
 
 		// Handle STDIO-specific fields
+		// Always set null for empty strings since the API uses omitempty
+		// This ensures consistency: empty string from API = null in Terraform
 		if a.MCPServer.Command != "" {
 			result.MCPServer.Command = types.StringValue(a.MCPServer.Command)
 		} else {
 			result.MCPServer.Command = types.StringNull()
 		}
 
-		if len(a.MCPServer.Args) > 0 {
+		// For collections, nil or empty both map to null
+		if a.MCPServer.Args != nil && len(a.MCPServer.Args) > 0 {
 			result.MCPServer.Args = toListStringType(a.MCPServer.Args, err)
 		} else {
 			result.MCPServer.Args = types.ListNull(types.StringType)
 		}
 
-		if len(a.MCPServer.Env) > 0 {
+		if a.MCPServer.Env != nil && len(a.MCPServer.Env) > 0 {
 			result.MCPServer.Env = toMapType(a.MCPServer.Env, err)
 		} else {
 			result.MCPServer.Env = types.MapNull(types.StringType)
 		}
 
 		// Handle SSE-specific fields
+		// Always set null for empty strings since the API uses omitempty
 		if a.MCPServer.URL != "" {
 			result.MCPServer.URL = types.StringValue(a.MCPServer.URL)
 		} else {
 			result.MCPServer.URL = types.StringNull()
 		}
 
-		if len(a.MCPServer.Headers) > 0 {
+		if a.MCPServer.Headers != nil && len(a.MCPServer.Headers) > 0 {
 			result.MCPServer.Headers = toMapType(a.MCPServer.Headers, err)
 		} else {
 			result.MCPServer.Headers = types.MapNull(types.StringType)
