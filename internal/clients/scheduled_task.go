@@ -9,9 +9,11 @@ import (
 	"slices"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 const (
@@ -194,82 +196,239 @@ func createScheduledTask(e *entities.ScheduledTaskModel) (*createScheduledTaskRe
 }
 
 func (c *Client) DeleteScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) error {
-	if e != nil {
-		id := e.Id.ValueString()
-		path := format("/api/v1/scheduled_tasks/%s", id)
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
 
-		_, err := c.delete(ctx, c.uri(path))
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteScheduledTask")
+		span.SetData("client.resource_type", "scheduled_task")
+	}
+
+	if e == nil {
+		logger.Error("DeleteScheduledTask called with nil entity")
+		err := fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
+	taskId := e.Id.ValueString()
+	taskAgent := e.Agent.ValueString()
+
+	logger.Info("Starting scheduled task deletion",
+		"task_id", taskId,
+		"agent", taskAgent)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting scheduled task via API", sentry.LevelInfo, map[string]interface{}{
+		"method":  "DeleteScheduledTask",
+		"task_id": taskId,
+		"agent":   taskAgent,
+	})
+
+	path := format("/api/v1/scheduled_tasks/%s", taskId)
+	_, err := c.delete(ctx, c.uri(path))
+	if err != nil {
+		logger.Error("Failed to delete scheduled task",
+			"task_id", taskId,
+			"agent", taskAgent,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return err
+	}
+
+	logger.Info("Scheduled task deleted successfully",
+		"task_id", taskId,
+		"agent", taskAgent)
+
+	return nil
 }
 
 func (c *Client) ReadScheduledTask(ctx context.Context, id string) (*entities.ScheduledTaskModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadScheduledTask")
+		span.SetData("client.resource_type", "scheduled_task")
+	}
+
+	logger.Debug("Reading scheduled task",
+		"task_id", id)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading scheduled task via API", sentry.LevelInfo, map[string]interface{}{
+		"method":  "ReadScheduledTask",
+		"task_id": id,
+	})
+
 	path := format("/api/v1/scheduled_tasks/%s", id)
 
 	resp, err := c.read(ctx, c.uri(path))
 	if err != nil {
+		logger.Error("Failed to read scheduled task",
+			"task_id", id,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	r, err := newScheduledTask(resp)
 	if err != nil {
+		logger.Error("Failed to decode scheduled task response",
+			"task_id", id,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
 		return nil, err
 	}
 
 	entity, err := fromScheduledTask(r)
 	if err != nil || entity == nil {
 		if err != nil {
+			logger.Error("Failed to convert scheduled task",
+				"task_id", id,
+				"error", err.Error())
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
-		return nil, eformat("ScheduledTask %s not found", id)
+		logger.Error("Scheduled task not found",
+			"task_id", id)
+		err = eformat("ScheduledTask %s not found", id)
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
 	}
+
+	logger.Debug("Scheduled task read successfully",
+		"task_id", id,
+		"agent", entity.Agent.ValueString(),
+		"status", entity.Status.ValueString())
 
 	return entity, nil
 }
 
 func (c *Client) CreateScheduledTask(ctx context.Context, e *entities.ScheduledTaskModel) (*entities.ScheduledTaskModel, error) {
-	if e != nil {
-		data, err := createScheduledTask(e)
-		if err != nil {
-			return nil, err
-		}
-
-		body, err := toJson(data)
-		if err != nil {
-			return nil, err
-		}
-
-		uri := c.uri("/api/v1/scheduled_tasks")
-
-		resp, err := c.create(ctx, uri, body)
-		if err != nil {
-			return nil, err
-		}
-
-		tmp := map[string]string{}
-		err = json.NewDecoder(resp).Decode(&tmp)
-		if err != nil {
-			return nil, err
-		}
-
-		if id, ok := tmp["task_id"]; ok {
-			var entity *entities.ScheduledTaskModel
-			if entity, err = c.ReadScheduledTask(ctx, id); err != nil {
-				return nil, err
-			}
-
-			if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
-				entity.Repeat = types.StringValue(cron)
-			}
-
-			return entity, nil
-		}
-
-		return nil, eformat("failed to createWithQueryParams scheduled task")
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
 	}
 
-	return e, fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateScheduledTask")
+		span.SetData("client.resource_type", "scheduled_task")
+	}
+
+	if e == nil {
+		logger.Error("CreateScheduledTask called with nil entity")
+		err := fmt.Errorf("param entity (*entities.ScheduledTaskModel) is nil")
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	taskAgent := e.Agent.ValueString()
+	taskDescription := e.Description.ValueString()
+	taskChannelId := e.ChannelId.ValueString()
+
+	logger.Info("Starting scheduled task creation",
+		"agent", taskAgent,
+		"description", taskDescription,
+		"channel_id", taskChannelId)
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating scheduled task via API", sentry.LevelInfo, map[string]interface{}{
+		"method":      "CreateScheduledTask",
+		"uri":         "/api/v1/scheduled_tasks",
+		"agent":       taskAgent,
+		"channel_id":  taskChannelId,
+		"description": taskDescription,
+	})
+
+	data, err := createScheduledTask(e)
+	if err != nil {
+		logger.Error("Failed to prepare scheduled task data",
+			"agent", taskAgent,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	body, err := toJson(data)
+	if err != nil {
+		logger.Error("Failed to marshal scheduled task request",
+			"agent", taskAgent,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	uri := c.uri("/api/v1/scheduled_tasks")
+
+	resp, err := c.create(ctx, uri, body)
+	if err != nil {
+		logger.Error("Failed to create scheduled task via API",
+			"agent", taskAgent,
+			"uri", uri,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	tmp := map[string]string{}
+	err = json.NewDecoder(resp).Decode(&tmp)
+	if err != nil {
+		logger.Error("Failed to decode scheduled task creation response",
+			"agent", taskAgent,
+			"error", err.Error())
+		kubiyasentry.RecordError(ctx, err)
+		return nil, err
+	}
+
+	if id, ok := tmp["task_id"]; ok {
+		logger.Info("Scheduled task created, reading details",
+			"task_id", id,
+			"agent", taskAgent)
+
+		var entity *entities.ScheduledTaskModel
+		if entity, err = c.ReadScheduledTask(ctx, id); err != nil {
+			logger.Error("Failed to read scheduled task after creation",
+				"task_id", id,
+				"agent", taskAgent,
+				"error", err.Error())
+			kubiyasentry.RecordError(ctx, err)
+			return nil, err
+		}
+
+		if cron := e.Repeat.ValueString(); !slices.Contains(cronOptions, cron) && len(cron) > 0 {
+			entity.Repeat = types.StringValue(cron)
+		}
+
+		logger.Info("Scheduled task created successfully",
+			"task_id", id,
+			"agent", taskAgent,
+			"status", entity.Status.ValueString())
+
+		return entity, nil
+	}
+
+	logger.Error("Failed to extract task_id from response",
+		"agent", taskAgent,
+		"response", tmp)
+	err = eformat("failed to createWithQueryParams scheduled task")
+	kubiyasentry.RecordError(ctx, err)
+	return nil, err
 }

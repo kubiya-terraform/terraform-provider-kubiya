@@ -1,6 +1,6 @@
 module terraform-provider-kubiya
 
-go 1.21.7
+go 1.22
 
 require (
 	github.com/google/uuid v1.6.0
@@ -15,6 +15,7 @@ require (
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
+	github.com/getsentry/sentry-go v0.35.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
