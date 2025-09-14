@@ -3,6 +3,7 @@ package entities
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -116,6 +117,80 @@ func TestValidateAgent(t *testing.T) {
 			},
 			wantError: true,
 			errorMsg:  "MCP server validation failed: url is required for sse type MCP server",
+		},
+		{
+			name: "invalid stdio MCP server with empty command string",
+			agent: &AgentModel{
+				Name:         types.StringValue("test-agent"),
+				Runner:       types.StringValue("default"),
+				Description:  types.StringValue("Test agent"),
+				Instructions: types.StringValue("Test instructions"),
+				MCPServer: &MCPServerModel{
+					Type:    types.StringValue("stdio"),
+					Command: types.StringValue(""), // Empty string should fail validation
+					Args:    types.ListNull(types.StringType),
+					Env:     types.MapNull(types.StringType),
+					URL:     types.StringNull(),
+					Headers: types.MapNull(types.StringType),
+				},
+			},
+			wantError: true,
+			errorMsg:  "MCP server validation failed: command is required for stdio type MCP server",
+		},
+		{
+			name: "invalid sse MCP server with empty url string",
+			agent: &AgentModel{
+				Name:         types.StringValue("test-agent"),
+				Runner:       types.StringValue("default"),
+				Description:  types.StringValue("Test agent"),
+				Instructions: types.StringValue("Test instructions"),
+				MCPServer: &MCPServerModel{
+					Type:    types.StringValue("sse"),
+					URL:     types.StringValue(""), // Empty string should fail validation
+					Headers: types.MapNull(types.StringType),
+					Command: types.StringNull(),
+					Args:    types.ListNull(types.StringType),
+					Env:     types.MapNull(types.StringType),
+				},
+			},
+			wantError: true,
+			errorMsg:  "MCP server validation failed: url is required for sse type MCP server",
+		},
+		{
+			name: "valid stdio MCP server with empty args list",
+			agent: &AgentModel{
+				Name:         types.StringValue("test-agent"),
+				Runner:       types.StringValue("default"),
+				Description:  types.StringValue("Test agent"),
+				Instructions: types.StringValue("Test instructions"),
+				MCPServer: &MCPServerModel{
+					Type:    types.StringValue("stdio"),
+					Command: types.StringValue("python"),
+					Args:    types.ListValueMust(types.StringType, []attr.Value{}), // Empty list is valid
+					Env:     types.MapNull(types.StringType),
+					URL:     types.StringNull(),
+					Headers: types.MapNull(types.StringType),
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "valid stdio MCP server with empty env map",
+			agent: &AgentModel{
+				Name:         types.StringValue("test-agent"),
+				Runner:       types.StringValue("default"),
+				Description:  types.StringValue("Test agent"),
+				Instructions: types.StringValue("Test instructions"),
+				MCPServer: &MCPServerModel{
+					Type:    types.StringValue("stdio"),
+					Command: types.StringValue("python"),
+					Args:    types.ListNull(types.StringType),
+					Env:     types.MapValueMust(types.StringType, map[string]attr.Value{}), // Empty map is valid
+					URL:     types.StringNull(),
+					Headers: types.MapNull(types.StringType),
+				},
+			},
+			wantError: false,
 		},
 	}
 
