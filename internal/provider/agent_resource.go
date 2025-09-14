@@ -162,6 +162,15 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		"agent_name": name,
 	})
 
+	// Validate agent configuration including MCP server if present
+	if err := entities.ValidateAgent(&plan); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Agent Configuration",
+			err.Error(),
+		)
+		return
+	}
+
 	state, err := r.client.CreateAgent(ctx, &plan)
 	if err != nil {
 		// Record error in span and capture to Sentry
@@ -270,6 +279,23 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 	if !plan.Integrations.IsNull() && !plan.Integrations.IsUnknown() {
 		updatedState.Integrations = plan.Integrations
+	}
+
+	// Handle MCP server updates
+	if plan.MCPServer != nil {
+		updatedState.MCPServer = plan.MCPServer
+	} else if plan.MCPServer == nil && state.MCPServer != nil {
+		// If plan has nil MCP server but state has one, user wants to remove it
+		updatedState.MCPServer = nil
+	}
+
+	// Validate the updated agent configuration including MCP server if present
+	if err := entities.ValidateAgent(&updatedState); err != nil {
+		resp.Diagnostics.AddError(
+			"Invalid Agent Configuration",
+			err.Error(),
+		)
+		return
 	}
 
 	id := updatedState.Id.ValueString()

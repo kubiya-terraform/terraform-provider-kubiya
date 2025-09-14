@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -32,21 +33,77 @@ type AgentModel struct {
 	Instructions types.String `tfsdk:"instructions"`
 
 	// Optional
-	Links        types.List     `tfsdk:"links"`
-	Tasks        []TaskModel    `tfsdk:"tasks"`
-	Users        types.List     `tfsdk:"users"`
-	Groups       types.List     `tfsdk:"groups"`
-	Sources      types.List     `tfsdk:"sources"`
-	Secrets      types.List     `tfsdk:"secrets"`
-	Starters     []StarterModel `tfsdk:"starters"`
-	Tools        types.List     `tfsdk:"tool_sources"`
-	Integrations types.List     `tfsdk:"integrations"`
-	Variables    types.Map      `tfsdk:"environment_variables"`
+	Links        types.List      `tfsdk:"links"`
+	Tasks        []TaskModel     `tfsdk:"tasks"`
+	Users        types.List      `tfsdk:"users"`
+	Groups       types.List      `tfsdk:"groups"`
+	Sources      types.List      `tfsdk:"sources"`
+	Secrets      types.List      `tfsdk:"secrets"`
+	Starters     []StarterModel  `tfsdk:"starters"`
+	Tools        types.List      `tfsdk:"tool_sources"`
+	Integrations types.List      `tfsdk:"integrations"`
+	Variables    types.Map       `tfsdk:"environment_variables"`
+	MCPServer    *MCPServerModel `tfsdk:"mcp_server"`
 }
 
 type StarterModel struct {
 	Name    string `tfsdk:"name"`
 	Command string `tfsdk:"command"`
+}
+
+type MCPServerModel struct {
+	Type    types.String `tfsdk:"type"`
+	Command types.String `tfsdk:"command"`
+	Args    types.List   `tfsdk:"args"`
+	Env     types.Map    `tfsdk:"env"`
+	URL     types.String `tfsdk:"url"`
+	Headers types.Map    `tfsdk:"headers"`
+}
+
+func MCPServerSchema() schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Optional:            true,
+		Description:         "MCP (Model Context Protocol) server configuration",
+		MarkdownDescription: "Configuration for MCP server integration, supporting both STDIO and SSE server types",
+		Attributes: map[string]schema.Attribute{
+			"type": schema.StringAttribute{
+				Required:            true,
+				Description:         "The type of MCP server (stdio or sse)",
+				MarkdownDescription: "The type of MCP server. Must be either 'stdio' for local command execution or 'sse' for Server-Sent Events",
+				Validators: []validator.String{
+					MCPServerTypeValidator{},
+				},
+			},
+			"command": schema.StringAttribute{
+				Optional:            true,
+				Description:         "The command to execute (required for stdio type)",
+				MarkdownDescription: "The command to execute for STDIO-type MCP servers",
+			},
+			"args": schema.ListAttribute{
+				Optional:            true,
+				ElementType:         types.StringType,
+				Description:         "Arguments for the command (optional for stdio type)",
+				MarkdownDescription: "List of arguments to pass to the command for STDIO-type MCP servers",
+			},
+			"env": schema.MapAttribute{
+				Optional:            true,
+				ElementType:         types.StringType,
+				Description:         "Environment variables (optional for stdio type)",
+				MarkdownDescription: "Environment variables to set for STDIO-type MCP servers",
+			},
+			"url": schema.StringAttribute{
+				Optional:            true,
+				Description:         "The URL of the SSE server (required for sse type)",
+				MarkdownDescription: "The URL endpoint for SSE-type MCP servers",
+			},
+			"headers": schema.MapAttribute{
+				Optional:            true,
+				ElementType:         types.StringType,
+				Description:         "HTTP headers (optional for sse type)",
+				MarkdownDescription: "HTTP headers to include in requests to SSE-type MCP servers",
+			},
+		},
+	}
 }
 
 func AgentSchema() schema.Schema {
@@ -200,6 +257,7 @@ func AgentSchema() schema.Schema {
 				Description:         "A map of environment variables for the agent",
 				MarkdownDescription: "A map of key-value pairs representing environment variables for the agent",
 			},
+			"mcp_server": MCPServerSchema(),
 		},
 	}
 }
