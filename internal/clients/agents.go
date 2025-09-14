@@ -8,9 +8,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type task struct {
@@ -337,25 +339,83 @@ func fromAgent(a *agent, cs *state) (*entities.AgentModel, error) {
 }
 
 func (c *Client) DeleteAgent(ctx context.Context, e *entities.AgentModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	if e != nil {
 		id := e.Id.ValueString()
 		path := format("/api/v1/agents/%s", id)
 
+		// Log deletion attempt
+		logger.Info("Deleting agent",
+			"agent_id", id,
+			"path", path,
+		)
+
+		// Add breadcrumb
+		kubiyasentry.AddBreadcrumb("client", "Deleting agent via API", sentry.LevelInfo, map[string]interface{}{
+			"method":   "DeleteAgent",
+			"agent_id": id,
+			"uri":      path,
+		})
+
 		_, err := c.delete(ctx, c.uri(path))
-		return err
+		if err != nil {
+			logger.Error("Failed to delete agent",
+				"agent_id", id,
+				"error", err,
+			)
+			return err
+		}
+
+		logger.Info("Successfully deleted agent",
+			"agent_id", id,
+		)
+		return nil
 	}
 
+	logger.Error("DeleteAgent called with nil entity")
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }
 
 func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
 	if e != nil {
+		id := e.Id.ValueString()
+		name := e.Name.ValueString()
+
+		// Log update attempt
+		logger.Info("Updating agent",
+			"agent_id", id,
+			"agent_name", name,
+		)
+
+		// Add breadcrumb
+		kubiyasentry.AddBreadcrumb("client", "Updating agent via API", sentry.LevelInfo, map[string]interface{}{
+			"method":     "UpdateAgent",
+			"agent_id":   id,
+			"agent_name": name,
+		})
+
 		cs, err := c.state()
 		if err != nil {
+			logger.Error("Failed to get state for agent update",
+				"agent_id", id,
+				"error", err,
+			)
 			return err
 		}
 
-		id := e.Id.ValueString()
 		e.Owner = types.StringNull()
 		uri := c.uri(format("/api/v1/agents/%s", id))
 
@@ -373,24 +433,68 @@ func (c *Client) UpdateAgent(ctx context.Context, e *entities.AgentModel) error 
 
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
+			logger.Error("Failed to update agent",
+				"agent_id", id,
+				"error", err,
+			)
 			return err
 		}
 
 		var r *agent
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			logger.Error("Failed to decode agent update response",
+				"agent_id", id,
+				"error", err,
+			)
 			return err
 		}
 
 		e, err = fromAgent(r, cs)
-		return err
+		if err != nil {
+			logger.Error("Failed to convert updated agent from API response",
+				"agent_id", id,
+				"error", err,
+			)
+			return err
+		}
+
+		logger.Info("Successfully updated agent",
+			"agent_id", id,
+			"agent_name", r.Name,
+		)
+		return nil
 	}
+
+	logger.Error("UpdateAgent called with nil entity")
 	return fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }
 
 func (c *Client) ReadAgent(ctx context.Context, id string) (*entities.AgentModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Log read attempt
+	logger.Debug("Reading agent",
+		"agent_id", id,
+	)
+
+	// Add breadcrumb
+	kubiyasentry.AddBreadcrumb("client", "Reading agent via API", sentry.LevelDebug, map[string]interface{}{
+		"method":   "ReadAgent",
+		"agent_id": id,
+	})
+
 	cs, err := c.state()
 	if err != nil {
+		logger.Error("Failed to get state for agent read",
+			"agent_id", id,
+			"error", err,
+		)
 		return nil, err
 	}
 
@@ -398,35 +502,91 @@ func (c *Client) ReadAgent(ctx context.Context, id string) (*entities.AgentModel
 
 	resp, err := c.read(ctx, c.uri(path))
 	if err != nil {
+		logger.Error("Failed to read agent",
+			"agent_id", id,
+			"error", err,
+		)
 		return nil, err
 	}
 
 	var r *agent
 	err = json.NewDecoder(resp).Decode(&r)
 	if err != nil {
+		logger.Error("Failed to decode agent read response",
+			"agent_id", id,
+			"error", err,
+		)
 		return nil, err
 	}
 
 	entity, err := fromAgent(r, cs)
 	if err != nil || entity == nil {
 		if err != nil {
+			logger.Error("Failed to convert agent from API response",
+				"agent_id", id,
+				"error", err,
+			)
 			return nil, err
 		}
+		logger.Warn("Agent not found",
+			"agent_id", id,
+		)
 		return nil, eformat("Agent %s not found", id)
 	}
 
+	logger.Debug("Successfully read agent",
+		"agent_id", id,
+		"agent_name", entity.Name.ValueString(),
+	)
 	return entity, nil
 }
 
 func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*entities.AgentModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateAgent")
+		span.SetData("client.resource_type", "agent")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating agent via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateAgent",
+		"uri":    "/api/v1/agents",
+	})
+
 	if e != nil {
+		name := e.Name.ValueString()
+
+		// Log creation attempt
+		logger.Info("Creating agent",
+			"agent_name", name,
+			"model", e.Model.ValueString(),
+			"runner", e.Runner.ValueString(),
+		)
+
 		cs, err := c.state()
 		if err != nil {
+			logger.Error("Failed to get state for agent creation",
+				"agent_name", name,
+				"error", err,
+			)
 			return nil, err
 		}
 
 		data, err := toAgent(e, cs)
 		if err != nil {
+			logger.Error("Failed to convert agent to API format",
+				"agent_name", name,
+				"error", err,
+			)
 			return nil, err
 		}
 
@@ -434,6 +594,10 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 
 		body, err := toJson(data)
 		if err != nil {
+			logger.Error("Failed to marshal agent to JSON",
+				"agent_name", e.Name.ValueString(),
+				"error", err,
+			)
 			return nil, err
 		}
 
@@ -441,17 +605,39 @@ func (c *Client) CreateAgent(ctx context.Context, e *entities.AgentModel) (*enti
 
 		resp, err := c.create(ctx, uri, body)
 		if err != nil {
+			logger.Error("Failed to create agent",
+				"agent_name", e.Name.ValueString(),
+				"error", err,
+			)
 			return nil, err
 		}
 
 		var r *agent
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			logger.Error("Failed to decode agent creation response",
+				"agent_name", e.Name.ValueString(),
+				"error", err,
+			)
 			return nil, err
 		}
 
-		return fromAgent(r, cs)
+		entity, err := fromAgent(r, cs)
+		if err != nil {
+			logger.Error("Failed to convert created agent from API response",
+				"agent_name", e.Name.ValueString(),
+				"error", err,
+			)
+			return nil, err
+		}
+
+		logger.Info("Successfully created agent",
+			"agent_id", r.Uuid,
+			"agent_name", r.Name,
+		)
+		return entity, nil
 	}
 
+	logger.Error("CreateAgent called with nil entity")
 	return e, fmt.Errorf("param entity (*entities.AgentModel) is nil")
 }

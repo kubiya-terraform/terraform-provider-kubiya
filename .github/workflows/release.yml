@@ -40,3 +40,5 @@ jobs:
           # GitHub sets the GITHUB_TOKEN secret automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
+          # Inject Sentry DSN from GitHub Secrets
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
