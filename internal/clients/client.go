@@ -7,6 +7,11 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/getsentry/sentry-go"
+
+	"terraform-provider-kubiya/internal/clients/vendors"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type Client struct {
@@ -16,10 +21,19 @@ type Client struct {
 }
 
 func New(key, env string) (*Client, error) {
+	// Get logger
+	logger := kubiyasentry.GetLogger()
+
 	if len(key) == 0 {
+		logger.Error("Failed to create client", "error", "ApiKey is missing or empty")
 		return nil, eformat("ApiKey is missing or empty")
 	}
-	client := &http.Client{}
+
+	// Create HTTP client with Sentry tracing transport
+	client := &http.Client{
+		Transport: kubiyasentry.NewHTTPTransport(http.DefaultTransport),
+	}
+
 	host := ""
 	switch env {
 	case "production":
@@ -30,8 +44,18 @@ func New(key, env string) (*Client, error) {
 	if strings.HasPrefix(env, "http") {
 		host = env
 	}
-	return &Client{userKey: key, client: client, host: host}, nil
 
+	logger.Info("Created Kubiya client",
+		"environment", env,
+		"host", host,
+	)
+
+	kubiyasentry.AddBreadcrumb("client", "Kubiya client created", sentry.LevelInfo, map[string]interface{}{
+		"environment": env,
+		"host":        host,
+	})
+
+	return &Client{userKey: key, client: client, host: host}, nil
 }
 
 func (c *Client) self() (*user, error) {
@@ -42,18 +66,38 @@ func (c *Client) self() (*user, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching current user info", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch current user", "error", err)
 		return nil, err
 	}
 
 	var result *user
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode user response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched current user")
+	return result, nil
 }
 
 func (c *Client) state() (*state, error) {
+	// Create context with logger
+	ctx := context.Background()
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching client state")
+	kubiyasentry.AddBreadcrumb("client", "Fetching complete state", sentry.LevelDebug, nil)
+
 	var err error
 	var currentState state
 
@@ -117,6 +161,29 @@ func (c *Client) state() (*state, error) {
 		currentState.knowledgeList = append(make([]*knowledge, 0), knowledgeList...)
 	}
 
+	if externalKnowledgeList, e := c.externalKnowledge(); e != nil {
+		err = errors.Join(err, e)
+	} else {
+		currentState.externalKnowledgeList = append(make([]*vendors.BaseExternalKnowledge, 0), externalKnowledgeList...)
+	}
+
+	if err != nil {
+		logger.Error("Failed to fetch complete state", "error", err)
+	} else {
+		logger.Debug("Successfully fetched client state",
+			"users", len(currentState.userList),
+			"agents", len(currentState.agentList),
+			"groups", len(currentState.groupList),
+			"runners", len(currentState.runnerList),
+			"secrets", len(currentState.secretList),
+			"sources", len(currentState.sourceList),
+			"webhooks", len(currentState.webhookList),
+			"integrations", len(currentState.integrationList),
+			"knowledge", len(currentState.knowledgeList),
+			"external_knowledge", len(currentState.externalKnowledgeList),
+		)
+	}
+
 	return &currentState, err
 }
 
@@ -128,15 +195,27 @@ func (c *Client) users() ([]*user, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching users list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch users", "error", err)
 		return nil, err
 	}
 
 	var result []*user
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode users response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched users", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) agents() ([]*agent, error) {
@@ -147,15 +226,27 @@ func (c *Client) agents() ([]*agent, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching agents list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch agents", "error", err)
 		return nil, err
 	}
 
 	var result []*agent
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode agents response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched agents", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) groups() ([]*group, error) {
@@ -166,15 +257,27 @@ func (c *Client) groups() ([]*group, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching groups list", "path", path)
+
 	resp, err := c.readBytes(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch groups", "error", err)
 		return nil, err
 	}
 
 	var result []*group
 	err = json.NewDecoder(bytes.NewReader(resp)).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode groups response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched groups", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) models() ([]string, error) {
@@ -186,10 +289,18 @@ func (c *Client) models() ([]string, error) {
 
 	uri := c.uri(path)
 	ctx := context.Background()
+
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching supported models", "path", path)
+
 	payload := strings.NewReader(body)
 
 	resp, err := c.create(ctx, uri, payload)
 	if err != nil {
+		logger.Error("Failed to fetch models", "error", err)
 		return nil, err
 	}
 
@@ -198,6 +309,7 @@ func (c *Client) models() ([]string, error) {
 	}{}
 
 	if err = json.NewDecoder(resp).Decode(tmp); err != nil {
+		logger.Error("Failed to decode models response", "error", err)
 		return nil, err
 	}
 
@@ -207,7 +319,8 @@ func (c *Client) models() ([]string, error) {
 		result = append(result, strings.TrimSpace(item))
 	}
 
-	return result, err
+	logger.Debug("Successfully fetched models", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) runners() ([]*runner, error) {
@@ -218,15 +331,27 @@ func (c *Client) runners() ([]*runner, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching runners list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch runners", "error", err)
 		return nil, err
 	}
 
 	var result []*runner
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode runners response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched runners", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) secrets() ([]*secret, error) {
@@ -237,15 +362,27 @@ func (c *Client) secrets() ([]*secret, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching secrets list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch secrets", "error", err)
 		return nil, err
 	}
 
 	var result []*secret
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode secrets response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched secrets", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) sources() ([]*source, error) {
@@ -256,12 +393,26 @@ func (c *Client) sources() ([]*source, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching sources list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch sources", "error", err)
 		return nil, err
 	}
 
-	return newSources(resp)
+	result, err := newSources(resp)
+	if err != nil {
+		logger.Error("Failed to parse sources response", "error", err)
+		return nil, err
+	}
+
+	logger.Debug("Successfully fetched sources", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) webhooks() ([]*webhook, error) {
@@ -272,15 +423,27 @@ func (c *Client) webhooks() ([]*webhook, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching webhooks list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch webhooks", "error", err)
 		return nil, err
 	}
 
 	var result []*webhook
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode webhooks response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched webhooks", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) knowledge() ([]*knowledge, error) {
@@ -291,15 +454,27 @@ func (c *Client) knowledge() ([]*knowledge, error) {
 	uri := c.uri(path)
 	ctx := context.Background()
 
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching knowledge list", "path", path)
+
 	resp, err := c.read(ctx, uri)
 	if err != nil {
+		logger.Error("Failed to fetch knowledge", "error", err)
 		return nil, err
 	}
 
 	var result []*knowledge
 	err = json.NewDecoder(resp).Decode(&result)
+	if err != nil {
+		logger.Error("Failed to decode knowledge response", "error", err)
+		return nil, err
+	}
 
-	return result, err
+	logger.Debug("Successfully fetched knowledge", "count", len(result))
+	return result, nil
 }
 
 func (c *Client) integrations() ([]*integration, error) {
@@ -308,6 +483,13 @@ func (c *Client) integrations() ([]*integration, error) {
 	)
 
 	ctx := context.Background()
+
+	// Ensure logger is in context
+	logger := kubiyasentry.GetLogger()
+	ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+
+	logger.Debug("Fetching integrations list", "path", pathIntegration)
+
 	result := []*integration{
 		{Name: "slack"},
 		{Name: "kubernetes"},
@@ -316,12 +498,14 @@ func (c *Client) integrations() ([]*integration, error) {
 	// Only call the integrations endpoint
 	resp, err := c.read(ctx, c.uri(pathIntegration))
 	if err != nil {
+		logger.Error("Failed to fetch integrations", "error", err)
 		return nil, err
 	}
 
 	var tmpList []*integrationApi
 	err = json.NewDecoder(resp).Decode(&tmpList)
 	if err != nil {
+		logger.Error("Failed to decode integrations response", "error", err)
 		return nil, err
 	}
 
@@ -331,5 +515,6 @@ func (c *Client) integrations() ([]*integration, error) {
 		})
 	}
 
-	return result, err
+	logger.Debug("Successfully fetched integrations", "count", len(result))
+	return result, nil
 }

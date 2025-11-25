@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	"terraform-provider-kubiya/internal/entities"
+	kubiyasentry "terraform-provider-kubiya/internal/sentry"
 )
 
 type knowledge struct {
@@ -141,20 +143,61 @@ func fromKnowledge(a *knowledge, cs *state) (*entities.KnowledgeModel, error) {
 	return result, err
 }
 
-func (c *Client) ReadKnowledge(_ context.Context, e *entities.KnowledgeModel) error {
+func (c *Client) ReadKnowledge(ctx context.Context, e *entities.KnowledgeModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "ReadKnowledge")
+		span.SetData("client.resource_type", "knowledge")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Reading knowledge via API", sentry.LevelDebug, map[string]interface{}{
+		"method": "ReadKnowledge",
+	})
+
 	if e != nil {
+		id := e.Id.ValueString()
+		name := e.Name.ValueString()
+
+		logger.Debug("Reading knowledge", map[string]interface{}{
+			"knowledge_id":   id,
+			"knowledge_name": name,
+		})
+
 		cs, err := c.state()
 		if err != nil {
+			logger.Error("Failed to get client state", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
 			return err
 		}
 
-		id := e.Id
-		name := e.Name
-
 		for _, a := range cs.knowledgeList {
-			if equal(a.Id, id.ValueString()) ||
-				equal(a.Name, name.ValueString()) {
+			if equal(a.Id, id) ||
+				equal(a.Name, name) {
 				e, err = fromKnowledge(a, cs)
+				if err != nil {
+					logger.Error("Failed to convert knowledge from API response", map[string]interface{}{
+						"error":          err.Error(),
+						"knowledge_id":   id,
+						"knowledge_name": name,
+					})
+				} else {
+					logger.Debug("Successfully read knowledge", map[string]interface{}{
+						"knowledge_id":   id,
+						"knowledge_name": name,
+					})
+				}
 				break
 			}
 		}
@@ -162,33 +205,119 @@ func (c *Client) ReadKnowledge(_ context.Context, e *entities.KnowledgeModel) er
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	err := fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	logger.Error("Knowledge entity is nil", map[string]interface{}{
+		"error": err.Error(),
+	})
+	return err
 }
 
 func (c *Client) DeleteKnowledge(ctx context.Context, e *entities.KnowledgeModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "DeleteKnowledge")
+		span.SetData("client.resource_type", "knowledge")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Deleting knowledge via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "DeleteKnowledge",
+	})
+
 	if e != nil {
 		id := e.Id.ValueString()
+		name := e.Name.ValueString()
+
+		logger.Info("Starting knowledge deletion", map[string]interface{}{
+			"knowledge_id":   id,
+			"knowledge_name": name,
+		})
+
 		path := format("/api/v1/knowledge/%s", id)
 
 		_, err := c.delete(ctx, c.uri(path))
+		if err != nil {
+			logger.Error("Failed to delete knowledge", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
+		} else {
+			logger.Info("Successfully deleted knowledge", map[string]interface{}{
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+		}
 		return err
 	}
 
-	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	err := fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	logger.Error("Knowledge entity is nil", map[string]interface{}{
+		"error": err.Error(),
+	})
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel) error {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "UpdateKnowledge")
+		span.SetData("client.resource_type", "knowledge")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Updating knowledge via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "UpdateKnowledge",
+	})
+
 	if e != nil {
+		id := e.Id.ValueString()
+		name := e.Name.ValueString()
+
+		logger.Info("Starting knowledge update", map[string]interface{}{
+			"knowledge_id":   id,
+			"knowledge_name": name,
+		})
+
 		cs, err := c.state()
 		if err != nil {
+			logger.Error("Failed to get client state", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
-		id := e.Id.ValueString()
 		uri := c.uri(format("/api/v1/knowledge/%s", id))
 
 		data, err := toKnowledge(e, cs)
 		if err != nil {
+			logger.Error("Failed to convert knowledge to API format", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
@@ -196,35 +325,108 @@ func (c *Client) UpdateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 
 		body, err := toJson(data)
 		if err != nil {
+			logger.Error("Failed to marshal knowledge data", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		resp, err := c.update(ctx, uri, body)
 		if err != nil {
+			logger.Error("Failed to update knowledge", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		var r *knowledge
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			logger.Error("Failed to decode update knowledge response", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return err
 		}
 
 		e, err = fromKnowledge(r, cs)
+		if err != nil {
+			logger.Error("Failed to convert updated knowledge from API response", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
+		} else {
+			logger.Info("Successfully updated knowledge", map[string]interface{}{
+				"knowledge_id":   id,
+				"knowledge_name": name,
+			})
+		}
 		return err
 	}
-	return fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+
+	err := fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	logger.Error("Knowledge entity is nil", map[string]interface{}{
+		"error": err.Error(),
+	})
+	kubiyasentry.RecordError(ctx, err)
+	return err
 }
 
 func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel) (*entities.KnowledgeModel, error) {
+	// Get logger from context
+	logger := kubiyasentry.LoggerFromContext(ctx)
+	if logger == nil {
+		logger = kubiyasentry.GetLogger()
+		ctx = kubiyasentry.ContextWithLogger(ctx, logger)
+	}
+
+	// Continue tracing from provider level
+	span := kubiyasentry.SpanFromContext(ctx)
+	if span != nil {
+		span.SetData("client.method", "CreateKnowledge")
+		span.SetData("client.resource_type", "knowledge")
+	}
+
+	// Add breadcrumb for client operation
+	kubiyasentry.AddBreadcrumb("client", "Creating knowledge via API", sentry.LevelInfo, map[string]interface{}{
+		"method": "CreateKnowledge",
+		"uri":    "/api/v1/knowledge",
+	})
+
 	if e != nil {
+		name := e.Name.ValueString()
+
+		logger.Info("Starting knowledge creation", map[string]interface{}{
+			"knowledge_name": name,
+		})
+
 		cs, err := c.state()
 		if err != nil {
+			logger.Error("Failed to get client state", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		data, err := toKnowledge(e, cs)
 		if err != nil {
+			logger.Error("Failed to convert knowledge to API format", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -232,6 +434,11 @@ func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 
 		body, err := toJson(data)
 		if err != nil {
+			logger.Error("Failed to marshal knowledge data", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
@@ -239,17 +446,45 @@ func (c *Client) CreateKnowledge(ctx context.Context, e *entities.KnowledgeModel
 
 		resp, err := c.create(ctx, uri, body)
 		if err != nil {
+			logger.Error("Failed to create knowledge", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
 		var r *knowledge
 		err = json.NewDecoder(resp).Decode(&r)
 		if err != nil {
+			logger.Error("Failed to decode create knowledge response", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
 			return nil, err
 		}
 
-		return fromKnowledge(r, cs)
+		result, err := fromKnowledge(r, cs)
+		if err != nil {
+			logger.Error("Failed to convert created knowledge from API response", map[string]interface{}{
+				"error":          err.Error(),
+				"knowledge_name": name,
+			})
+			kubiyasentry.RecordError(ctx, err)
+		} else {
+			logger.Info("Successfully created knowledge", map[string]interface{}{
+				"knowledge_id":   result.Id.ValueString(),
+				"knowledge_name": name,
+			})
+		}
+		return result, err
 	}
 
-	return e, fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	err := fmt.Errorf("param entity (*entities.KnowledgeModel) is nil")
+	logger.Error("Knowledge entity is nil", map[string]interface{}{
+		"error": err.Error(),
+	})
+	kubiyasentry.RecordError(ctx, err)
+	return nil, err
 }

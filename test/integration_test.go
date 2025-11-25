@@ -8,7 +8,7 @@ import (
 )
 
 func TestKubiyaAgent(t *testing.T) {
-	t.Parallel()
+	//t.Parallel()
 
 	apiKey := os.Getenv("KUBIYA_API_KEY")
 	if apiKey == "" {
@@ -116,7 +116,7 @@ func TestKubiyaSources(t *testing.T) {
 
 		terraform.InitAndApply(t, terraformOptions)
 
-		output := terraform.Output(t, terraformOptions, "inline_source")
+		output := terraform.Output(t, terraformOptions, "output")
 		t.Log(output)
 
 		output = terraform.Destroy(t, terraformOptions)
