@@ -4,3 +4,10 @@ __debug_*
 examples/terraform.log
 examples/terraform.*
 terraform-provider-*
+
+# Added by Maturity Check
+.DS_Store
+.idea/
+.vscode/
+*.exe
+*.test
