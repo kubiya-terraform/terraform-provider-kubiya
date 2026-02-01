@@ -1,11 +1,11 @@
 module terraform-provider-kubiya
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/getsentry/sentry-go v0.35.2
 	github.com/google/uuid v1.6.0
-	github.com/gruntwork-io/terratest v0.54.0
+	github.com/gruntwork-io/terratest v0.55.0
 	github.com/hashicorp/terraform-plugin-framework v1.17.0
 	github.com/hashicorp/terraform-plugin-log v0.10.0
 )
